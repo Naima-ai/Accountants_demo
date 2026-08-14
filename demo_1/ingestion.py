@@ -2,7 +2,7 @@
 ingestion.py
 
 Converts heterogeneous accounting documents (XML e-invoices, PDFs,
-scanned receipts/images, CSV exports) into a single normalized
+scanned receipts/images, TXT, CSV exports) into a single normalized
 IngestedDocument, defined in schemas.py.
 
 Usage:
@@ -231,6 +231,34 @@ class CSVIngestor(BaseIngestor):
         doc.metadata["columns"] = df.columns.tolist()
         return doc
 
+        
+class TextIngestor(BaseIngestor):
+    """Handles plain-text documents."""
+
+    def ingest(self, file_path: str) -> IngestedDocument:
+        doc = self._new_doc(file_path, SourceFileType.TXT)
+
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+
+            doc.full_text = text
+
+            doc.pages.append(PageContent(
+                page_number=1,
+                text=text,
+                extraction_method=ExtractionMethod.TXT_PARSE,
+            ))
+
+            doc.metadata["character_count"] = len(text)
+            doc.metadata["line_count"] = len(text.splitlines())
+
+            return doc
+
+        except Exception as e:
+            doc.success = False
+            doc.error = f"Failed to read TXT: {e}"
+            return doc
 
 class ImageIngestor(BaseIngestor):
     """Handles photos/scans of receipts and invoices via OCR."""
@@ -276,6 +304,7 @@ class IngestionPipeline:
     EXT_MAP = {
         ".pdf": PDFIngestor,
         ".xml": XMLIngestor,
+        ".txt": TextIngestor,
         ".csv": CSVIngestor,
         ".png": ImageIngestor,
         ".jpg": ImageIngestor,
@@ -319,23 +348,3 @@ class IngestionPipeline:
             if os.path.isfile(fpath):
                 results.append(self.ingest_file(fpath))
         return results
-
-
-if __name__ == "__main__":
-    import sys
-
-    pipeline = IngestionPipeline()
-    target = sys.argv[1] if len(sys.argv) > 1 else "../sample_documents"
-
-    docs = pipeline.ingest_folder(target) if os.path.isdir(target) else [pipeline.ingest_file(target)]
-
-    for d in docs:
-        print(f"\n=== {d.original_filename} ===")
-        print(f"Type: {d.file_type.value} | Success: {d.success}")
-        if d.error:
-            print(f"Error: {d.error}")
-        else:
-            print(f"Text preview: {d.full_text[:200]!r}")
-            if d.warnings:
-                print(f"Warnings: {d.warnings}")
-            print(f"Classifier payload keys: {list(d.to_classifier_input().keys())}")
