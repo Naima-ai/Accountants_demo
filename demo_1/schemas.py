@@ -2,8 +2,7 @@
 schemas.py
 
 Defines the unified output contract for ingestion.py.
-
-Every ingestor (PDF, XML, CSV, Image) returns an IngestedDocument,
+Every ingestor (PDF, XML, CSV, TXT, Image) returns an IngestedDocument,
 regardless of source format. This is the interface classifier.py and
 extractor.py should be built against — they should never need to know
 whether a document originally was a scanned receipt or an XML e-invoice.
@@ -16,7 +15,8 @@ from enum import Enum
 
 class SourceFileType(str, Enum):
     PDF_TEXT = "pdf_text"          # PDF with extractable native text
-    PDF_SCANNED = "pdf_scanned"    # PDF that required OCR on some/all pages
+    PDF_SCANNED = "pdf_scanned"     # PDF that required OCR on some/all pages
+    TXT = "txt"
     XML = "xml"
     CSV = "csv"
     IMAGE = "image"
@@ -28,6 +28,7 @@ class ExtractionMethod(str, Enum):
     OCR = "ocr"
     XML_PARSE = "xml_parse"
     CSV_PARSE = "csv_parse"
+    TXT_PARSE = "txt_parse"
 
 
 class TableData(BaseModel):
@@ -51,17 +52,13 @@ class IngestedDocument(BaseModel):
     original_filename: str
     file_type: SourceFileType
     ingested_at: str
-
     full_text: str
     pages: List[PageContent] = Field(default_factory=list)
-
     # Populated for XML/CSV where native structure exists
     structured_data: Optional[Dict[str, Any]] = None
     tables: List[TableData] = Field(default_factory=list)
-
     metadata: Dict[str, Any] = Field(default_factory=dict)
     warnings: List[str] = Field(default_factory=list)
-
     success: bool = True
     error: Optional[str] = None
 
