@@ -1,0 +1,58 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Secrets -- never commit these
+.env
+.env.local
+
+# Heavy local datasets & temporary files
+data_set/sroie/
+data_set/t
+*.arrow
+*.tmp
+*.log
+
+# Test images generated during development -- not needed by teammates
+data_set/real_sroie_*.png
+data_set/real_cord_*.png
+data_set/clean_invoice.png
+data_set/sample_receipt.png
