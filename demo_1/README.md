@@ -44,7 +44,7 @@ Each step decides for itself whether it needs the local model:
 | `chart_of_accounts.json` | Meet | Synthetic Italian Chart of Accounts (built on the real Civil Code structure) |
 | `test_pipeline_on_file.py` | Meet | Run the full chain on any one file |
 | `accuracy_scorer.py` | Meet | Measures real accuracy against a labeled dataset (SROIE) |
-| `ocr_fix_comparison.py` | Meet | Diagnostic: compares OCR quality with/without a proposed image-preprocessing fix |
+
 
 ## Setup
 
