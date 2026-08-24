@@ -1,8 +1,6 @@
 """
 download_real_samples.py
-
-Naima's data_load.py calls load_dataset(...) for several real receipt/
-invoice datasets but never actually saves anything to disk. This script
+This script
 pulls a handful of real images from two of them and saves them as real
 files in data_set/, ready to run through test_pipeline_on_file.py.
 
