@@ -31,9 +31,21 @@ _SRC_DIR = os.path.dirname(_CURR_DIR)
 _BASE_DIR = os.path.dirname(_SRC_DIR)
 _DEMO_1_DIR = os.path.join(_BASE_DIR, "demo_1")
 
-for path in (_SRC_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database"), _DEMO_1_DIR):
-    if path not in sys.path:
-        sys.path.insert(0, path)
+def _prioritize(path: str) -> None:
+    # database.py lives inside a folder ALSO named "database" (same for
+    # memory.py/memory/), so if the parent src/ dir and src/database/
+    # are both on sys.path, `import database` is ambiguous -- it can
+    # resolve to src/database/__init__.py (the package) instead of
+    # src/database/database.py (the module we want), depending on
+    # insertion order. Forcing these to the front, in this order, keeps
+    # the flat single-file modules winning every time.
+    if path in sys.path:
+        sys.path.remove(path)
+    sys.path.insert(0, path)
+
+
+for path in (_SRC_DIR, _DEMO_1_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database")):
+    _prioritize(path)
 
 from memory import MemoryStore  # noqa: E402
 

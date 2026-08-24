@@ -1,0 +1,17 @@
+Ristorante Da Mario
+P.IVA: IT03847562910
+
+FATTURA n. 1003
+Data: 2026-07-07
+Scadenza: 2026-08-06
+
+Cliente: Rossi Impianti Srl
+
+Descrizione: Pranzo di lavoro
+Quantita: 4.57
+Prezzo unitario: 89.12
+Totale riga: 407.28
+
+Subtotale: 407.28
+IVA (22%): 89.60
+Totale: 496.88 EUR

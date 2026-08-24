@@ -1,0 +1,17 @@
+Agenzia Pubblicita Milano Srl
+P.IVA: IT07736251840
+
+FATTURA n. 1007
+Data: 2026-07-15
+Scadenza: 2026-08-14
+
+Cliente: Bianchi Consulting Srl
+
+Descrizione: Campagna pubblicita
+Quantita: 3.6
+Prezzo unitario: 295.22
+Totale riga: 1062.79
+
+Subtotale: 1062.79
+IVA (22%): 233.81
+Totale: 1296.60 EUR

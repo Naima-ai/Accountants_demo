@@ -66,3 +66,37 @@ python demo_3/report_agent.py                    # ratios + anomaly detection + 
 classifier/extractor/validator/accounting_agent + `ingestion.py`) against
 `data_set/IT01234567890_FPR01.xml` and checks the entry comes out balanced and
 `ready_to_post`, and that the supplier is remembered on a second run.
+
+### Seeding a full demo database
+
+For an actual demo/testing pass (not just self-tests), `src/database/seed_demo_data.py`
+runs 10 real documents in **every format `ingestion.py` supports** through the full
+Demo 1 pipeline and persists the results into the real database (`var/accountants_demo.db`,
+not an in-memory throwaway):
+
+```bash
+python data_set/generate_synthetic_samples.py   # 10 each: XML, native PDF, scanned PDF, plain text
+python data_set/download_real_samples.py        # 10 real CORD receipts (network + `datasets` package)
+python src/database/seed_demo_data.py            # runs all of it through Demo1Orchestrator, seeds the DB
+```
+
+- **Synthetic** (`data_set/generate_synthetic_samples.py`): 10 FatturaPA XML e-invoices,
+  10 native-text PDFs, 10 image-only "scanned" PDFs (forces the OCR path), 10 plain-text
+  invoices -- suppliers/line items are drawn from `chart_of_accounts.json`'s own keyword
+  lists so categorization has something real to match against.
+- **Real** (`data_set/download_real_samples.py`, bumped to 10 samples): CORD receipts
+  download fine. **`darentang/sroie` currently fails** under `datasets>=3.0`
+  ("Dataset scripts are no longer supported" -- an upstream Hugging Face incompatibility,
+  not something in this repo) -- the 3 SROIE samples already committed in
+  `data_set/samples/images/` are what's available until that's resolved (an older
+  `datasets` pin, or a different SROIE mirror, would fix it if more are needed).
+- The seed script assigns documents round-robin across a small demo client roster,
+  runs the full ingest -> classify -> extract -> validate -> account chain, and prints a
+  per-format summary (ready_to_post / needs_review / errors), same shape as
+  `demo_1/accuracy_scorer.py`.
+- **XML documents don't need Ollama** (fully structured, deterministic) and should
+  always come back `ready_to_post`. Everything else (PDF/image/text) needs the local
+  SLM for classification/extraction -- without Ollama running, those land in
+  `needs_review` instead of failing, which is correct graceful-degradation behavior,
+  not a bug. Run `ollama pull qwen2.5:3b-instruct` and start Ollama first for full
+  accuracy on the non-XML formats.

@@ -1,0 +1,17 @@
+TechStore Informatica Srl
+P.IVA: IT04756293810
+
+FATTURA n. 1004
+Data: 2026-07-09
+Scadenza: 2026-08-08
+
+Cliente: Bianchi Consulting Srl
+
+Descrizione: Laptop
+Quantita: 2.69
+Prezzo unitario: 63.41
+Totale riga: 170.57
+
+Subtotale: 170.57
+IVA (22%): 37.53
+Totale: 208.10 EUR
