@@ -5,3 +5,15 @@ pandas>=2.0
 lxml>=4.9
 Pillow>=10.0
 pytesseract>=0.3.10
+requests>=2.31.0
+json-repair>=0.25.0
+
+# Shared stack (src/): database, memory, orchestration, API
+sqlalchemy>=2.0
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+
+# Optional: PDF export for Demo 3 advisory letters (demo_3/report_agent.py
+# falls back to text-only if this isn't installed)
+reportlab>=4.0
