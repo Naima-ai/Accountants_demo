@@ -14,7 +14,7 @@ Categorization is two-stage:
      pick from the allowed COA code list ONLY.
 
 Usage:
-    from validator import Validator
+    from src.validation.validator import Validator
 
     result = Validator().validate(extracted_fields)
     # result.is_valid, result.issues, result.line_item_categorizations
@@ -24,20 +24,24 @@ import json
 import logging
 import os
 import re
+import sys
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
-from ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/validation/validator.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
 
 logger = logging.getLogger("validator")
 logging.basicConfig(level=logging.INFO)
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_COA_PATH = os.path.join(CURRENT_DIR, "..", "data_set", "chart_of_accounts.json")
-if not os.path.exists(DEFAULT_COA_PATH):
-    DEFAULT_COA_PATH = os.path.join(CURRENT_DIR, "data_set", "chart_of_accounts.json")
+DEFAULT_COA_PATH = os.path.join(_REPO_ROOT, "data_set", "chart_of_accounts.json")
 
 # Amount reconciliation tolerance (rounding across currencies/line items).
 AMOUNT_TOLERANCE = 0.02
@@ -408,19 +412,16 @@ JSON:"""
 # Quick manual test: chains the full pipeline on the real XML sample
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from ingestion import IngestionPipeline
-    from classifier import DocumentClassifier
-    from extractor import FieldExtractor, ExtractedFields, LineItem
+    from src.ingestion.ingestion import IngestionPipeline
+    from src.classifier.classifier import DocumentClassifier
+    from src.extraction.extractor import FieldExtractor, ExtractedFields, LineItem
 
     pipeline = IngestionPipeline()
     clf = DocumentClassifier()
     extractor = FieldExtractor()
     validator = Validator()
 
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    sample_xml = os.path.join(curr_dir, "..", "data_set", "IT01234567890_FPR01.xml")
-    if not os.path.exists(sample_xml):
-        sample_xml = os.path.join(curr_dir, "data_set", "IT01234567890_FPR01.xml")
+    sample_xml = os.path.join(_REPO_ROOT, "data_set", "IT01234567890_FPR01.xml")
 
     print("=== Full pipeline on real XML sample ===")
     doc = pipeline.ingest_file(sample_xml)

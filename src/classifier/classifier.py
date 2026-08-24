@@ -12,23 +12,31 @@ Two-stage approach:
      structurally obvious, ask a local Ollama model for a JSON verdict.
 
 Usage:
-    from classifier import DocumentClassifier
-    from ollama_client import warm_up
+    from src.classifier.classifier import DocumentClassifier
+    from src.llm.ollama_client import warm_up
 
-    warm_up()  # once, before real work — see ollama_client.py
+    warm_up()  # once, before real work — see src/llm/ollama_client.py
     clf = DocumentClassifier()
     result = clf.classify(doc.to_classifier_input())
     # result.document_type, result.confidence, result.needs_review
 """
 
 import logging
+import os
 import re
+import sys
 from enum import Enum
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
-from ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/classifier/classifier.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
 
 logger = logging.getLogger("classifier")
 logging.basicConfig(level=logging.INFO)
@@ -220,7 +228,7 @@ JSON:"""
 # text. Run: python classifier.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from ollama_client import warm_up
+    from src.llm.ollama_client import warm_up
 
     clf = DocumentClassifier()
 

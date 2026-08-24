@@ -1,15 +1,16 @@
 """
+download_real_samples.py
 
-This script
-pulls a handful of real images from two of them and saves them as real
-files in data_set/, ready to run through test_pipeline_on_file.py.
+Pulls a handful of real receipt/invoice images from public Hugging Face
+datasets and saves them as real files in data_set/samples/images/, ready
+to run through the Demo 1 pipeline.
 
 Datasets used:
   - darentang/sroie   -- real photographed retail receipts (SROIE)
   - naver-clova-ix/cord-v2 -- real photographed receipts (CORD)
-Both are public, no Hugging Face login needed. (FUNSD, also referenced
-in data_load.py, IS gated and needs `huggingface-cli login` -- skipped
-here to avoid that friction; ask if you want it later.)
+Both are public, no Hugging Face login needed. (FUNSD, sometimes
+referenced alongside these, IS gated and needs `huggingface-cli login`
+-- skipped here to avoid that friction.)
 
 Note: these are real receipts, but not Italian -- SROIE is mostly
 Malaysian retail, CORD mostly Indonesian. Don't expect the Chart of
@@ -20,15 +21,16 @@ testing OCR/classification/extraction against real photographed messiness
 Setup (once):
     pip install datasets huggingface_hub
 
-Run (from inside demo_1/ or data_set/, doesn't matter -- uses absolute-ish paths):
-    python download_real_samples.py
+Run (from anywhere -- uses an absolute path back to data_set/):
+    python src/data/download_real_samples.py
 """
 
 import os
 
 from datasets import load_dataset, load_from_disk
 
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "samples", "images")
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+OUTPUT_DIR = os.path.join(_REPO_ROOT, "data_set", "samples", "images")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 N_SAMPLES = 10
 
@@ -94,5 +96,5 @@ if __name__ == "__main__":
     else:
         save_samples("darentang/sroie", "real_sroie_receipt")
     save_samples("naver-clova-ix/cord-v2", "real_cord_receipt")
-    print("\nDone. Test any of them with:")
-    print("  python test_pipeline_on_file.py ../data_set/real_sroie_receipt_1.png")
+    print("\nDone. Run `python src/database/seed_demo_data.py` to process everything, "
+          "or use the /api/test routes in test_api.py to try one file at a time.")

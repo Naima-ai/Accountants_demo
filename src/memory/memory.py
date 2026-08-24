@@ -16,7 +16,7 @@ Covers:
   - Shared: one human-review queue for all three demos.
 
 Usage:
-    from memory import MemoryStore
+    from src.memory.memory import MemoryStore
 
     memory = MemoryStore()
     memory.learn_supplier(client_id="c-001", supplier_name="Acme Srl",
@@ -27,25 +27,22 @@ Usage:
 
 import json
 import logging
+import os
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-try:
-    from database import (
-        Client, Document, JournalEntry, JournalLine, SupplierPattern,
-        ExpectedDocument, ReminderLog, FinancialStatement, AnalysisReport,
-        ReviewQueueItem, session_scope, init_db,
-    )
-except ImportError:  # pragma: no cover - allows running this file standalone
-    import os
-    import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database"))
-    from database import (
-        Client, Document, JournalEntry, JournalLine, SupplierPattern,
-        ExpectedDocument, ReminderLog, FinancialStatement, AnalysisReport,
-        ReviewQueueItem, session_scope, init_db,
-    )
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/memory/memory.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.database.database import (
+    Client, Document, JournalEntry, JournalLine, SupplierPattern,
+    ExpectedDocument, ReminderLog, FinancialStatement, AnalysisReport,
+    ReviewQueueItem, session_scope, init_db,
+)
 
 logger = logging.getLogger("memory")
 logging.basicConfig(level=logging.INFO)
@@ -427,14 +424,13 @@ class MemoryStore:
 # Run: python memory.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    import os
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     import importlib
-    import config as _config
+    import src.config as _config
     importlib.reload(_config)
-    import database as _database
+    import src.database.database as _database
     importlib.reload(_database)
-    from database import (  # noqa: F811 - reload with the in-memory URL applied
+    from src.database.database import (  # noqa: F811 - reload with the in-memory URL applied
         Client, Document, JournalEntry, JournalLine, SupplierPattern,
         ExpectedDocument, ReminderLog, FinancialStatement, AnalysisReport,
         ReviewQueueItem, session_scope, init_db,

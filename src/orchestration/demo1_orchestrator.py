@@ -1,21 +1,21 @@
 """
 demo1_orchestrator.py
 
-Chains demo_1's pipeline (ingestion -> classifier -> extractor ->
-validator -> accounting_agent, all Meet's + my ingestion.py) together
-with the shared memory/database layer, and returns one result object
-the API layer (Harith's api.py) or a CLI can hand back as-is.
+Chains the Demo 1 pipeline (ingestion -> classifier -> extractor ->
+validator -> accounting_agent) together with the shared memory/database
+layer, and returns one result object the API layer or a CLI can hand
+back as-is.
 
-This is the piece that turns "five separate scripts" into "drop a
+This is the piece that turns "five separate modules" into "drop a
 folder in, get clean journal entries out" -- the Demo 1 wow moment
 from the brief.
 
 Usage:
-    from demo1_orchestrator import Demo1Orchestrator
+    from src.orchestration.demo1_orchestrator import Demo1Orchestrator
 
     orch = Demo1Orchestrator()
-    result = orch.process_file("../data_set/IT01234567890_FPR01.xml", client_id="c-001")
-    summary = orch.process_folder("../data_set", client_id="c-001")
+    result = orch.process_file("data_set/IT01234567890_FPR01.xml", client_id="c-001")
+    summary = orch.process_folder("data_set/samples/xml", client_id="c-001")
 """
 
 import logging
@@ -26,44 +26,24 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("demo1_orchestrator")
 logging.basicConfig(level=logging.INFO)
 
-_CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-_SRC_DIR = os.path.dirname(_CURR_DIR)
-_BASE_DIR = os.path.dirname(_SRC_DIR)
-_DEMO_1_DIR = os.path.join(_BASE_DIR, "demo_1")
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/orchestration/demo1_orchestrator.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-def _prioritize(path: str) -> None:
-    # database.py lives inside a folder ALSO named "database" (same for
-    # memory.py/memory/), so if the parent src/ dir and src/database/
-    # are both on sys.path, `import database` is ambiguous -- it can
-    # resolve to src/database/__init__.py (the package) instead of
-    # src/database/database.py (the module we want), depending on
-    # insertion order. Forcing these to the front, in this order, keeps
-    # the flat single-file modules winning every time.
-    if path in sys.path:
-        sys.path.remove(path)
-    sys.path.insert(0, path)
-
-
-for path in (_SRC_DIR, _DEMO_1_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database")):
-    _prioritize(path)
-
-from memory import MemoryStore  # noqa: E402
+from src.memory.memory import MemoryStore
+from src.ingestion.ingestion import IngestionPipeline
+from src.classifier.classifier import DocumentClassifier
+from src.extraction.extractor import FieldExtractor
+from src.validation.validator import Validator
+from src.agents.accounting_agent import AccountingAgent
 
 
 class Demo1Orchestrator:
     """Runs the full Demo 1 chain and persists every step through MemoryStore."""
 
     def __init__(self, memory: Optional[MemoryStore] = None):
-        # Imported lazily (after sys.path is patched above) so this module
-        # can be imported even in environments where demo_1's deps
-        # (PyMuPDF, pytesseract, ...) aren't installed, as long as nobody
-        # actually calls process_file/process_folder.
-        from ingestion import IngestionPipeline
-        from classifier import DocumentClassifier
-        from extractor import FieldExtractor
-        from validator import Validator
-        from accounting_agent import AccountingAgent
-
         self.pipeline = IngestionPipeline()
         self.classifier = DocumentClassifier()
         self.extractor = FieldExtractor()
@@ -182,20 +162,20 @@ class Demo1Orchestrator:
 # Quick manual test: runs the real XML sample end to end (no Ollama
 # needed -- XML is fully structured) and checks it lands ready_to_post,
 # then runs it a second time to confirm the supplier is now remembered.
-# Run: python demo1_orchestrator.py
+# Run: python src/orchestration/demo1_orchestrator.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     import importlib
-    import config as _config
+    import src.config as _config
     importlib.reload(_config)
-    import database as _database
+    import src.database.database as _database
     importlib.reload(_database)
-    import memory as _memory
+    import src.memory.memory as _memory
     importlib.reload(_memory)
-    from memory import MemoryStore  # noqa: F811, E402
+    from src.memory.memory import MemoryStore  # noqa: F811, E402
 
-    sample_xml = os.path.join(_BASE_DIR, "data_set", "IT01234567890_FPR01.xml")
+    sample_xml = os.path.join(_REPO_ROOT, "data_set", "IT01234567890_FPR01.xml")
 
     mem = MemoryStore()
     mem.upsert_client("c-001", "Test Client Srl")
