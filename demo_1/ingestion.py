@@ -104,7 +104,16 @@ class PDFIngestor(BaseIngestor):
                 any_scanned = True
                 pix = page.get_pixmap(dpi=300)
                 img = Image.open(io.BytesIO(pix.tobytes("png")))
-                ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+                try:
+                    ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+                except Exception as e:
+                    # Same failure mode ImageIngestor already guards against
+                    # (e.g. tesseract not installed) -- fail this document
+                    # cleanly instead of raising past a partially-built doc.
+                    doc.success = False
+                    doc.error = f"OCR failed on page {page_num + 1}: {e}"
+                    pdf.close()
+                    return doc
                 words = [w for w in ocr_data["text"] if w.strip()]
                 confs = [int(c) for c, w in zip(ocr_data["conf"], ocr_data["text"])
                          if w.strip() and c != "-1"]
