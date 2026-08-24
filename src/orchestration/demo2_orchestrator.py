@@ -38,9 +38,18 @@ _SRC_DIR = os.path.dirname(_CURR_DIR)
 _BASE_DIR = os.path.dirname(_SRC_DIR)
 _DEMO_2_DIR = os.path.join(_BASE_DIR, "demo_2")
 
-for path in (_SRC_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database"), _DEMO_2_DIR):
-    if path not in sys.path:
-        sys.path.insert(0, path)
+def _prioritize(path: str) -> None:
+    # See the matching comment in demo1_orchestrator.py: database.py and
+    # memory.py share their filename with their parent folder, so these
+    # must be forced to the front of sys.path (in this order) or
+    # `import database`/`import memory` can resolve to the wrong thing.
+    if path in sys.path:
+        sys.path.remove(path)
+    sys.path.insert(0, path)
+
+
+for path in (_SRC_DIR, _DEMO_2_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database")):
+    _prioritize(path)
 
 try:
     from config import REMINDER_DEFAULT_CHANNEL, REMINDER_MAX_FOLLOWUPS, REMINDER_MANUAL_MINUTES_PER_DOC

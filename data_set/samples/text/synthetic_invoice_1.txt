@@ -1,0 +1,17 @@
+Enel Energia SpA
+P.IVA: IT00834710156
+
+FATTURA n. 1000
+Data: 2026-07-01
+Scadenza: 2026-07-31
+
+Cliente: Rossi Impianti Srl
+
+Descrizione: Energia elettrica
+Quantita: 3.56
+Prezzo unitario: 61.25
+Totale riga: 218.05
+
+Subtotale: 218.05
+IVA (22%): 47.97
+Totale: 266.02 EUR

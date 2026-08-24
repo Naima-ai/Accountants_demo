@@ -1,0 +1,17 @@
+Studio Legale Bianchi & Associati
+P.IVA: IT01928374650
+
+FATTURA n. 1001
+Data: 2026-07-03
+Scadenza: 2026-08-02
+
+Cliente: Bianchi Consulting Srl
+
+Descrizione: Consulenza legale
+Quantita: 2.1
+Prezzo unitario: 150.44
+Totale riga: 315.92
+
+Subtotale: 315.92
+IVA (22%): 69.50
+Totale: 385.42 EUR

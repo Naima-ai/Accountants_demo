@@ -1,0 +1,17 @@
+Trasporti Rossi Srl
+P.IVA: IT02938475610
+
+FATTURA n. 1002
+Data: 2026-07-05
+Scadenza: 2026-08-04
+
+Cliente: Verdi Logistica Srl
+
+Descrizione: Trasporto merci
+Quantita: 3.95
+Prezzo unitario: 354.51
+Totale riga: 1400.31
+
+Subtotale: 1400.31
+IVA (22%): 308.07
+Totale: 1708.38 EUR

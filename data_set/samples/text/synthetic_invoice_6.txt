@@ -1,0 +1,17 @@
+Assicurazioni Generali SpA
+P.IVA: IT05938471029
+
+FATTURA n. 1005
+Data: 2026-07-11
+Scadenza: 2026-08-10
+
+Cliente: Verdi Logistica Srl
+
+Descrizione: Polizza assicurazione
+Quantita: 1.87
+Prezzo unitario: 277.41
+Totale riga: 518.76
+
+Subtotale: 518.76
+IVA (22%): 114.13
+Totale: 632.89 EUR
