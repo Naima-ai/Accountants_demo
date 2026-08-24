@@ -1,0 +1,17 @@
+Immobiliare Verdi Srl
+P.IVA: IT06827364910
+
+FATTURA n. 1006
+Data: 2026-07-13
+Scadenza: 2026-08-12
+
+Cliente: Rossi Impianti Srl
+
+Descrizione: Canone di locazione ufficio
+Quantita: 1.11
+Prezzo unitario: 139.48
+Totale riga: 154.82
+
+Subtotale: 154.82
+IVA (22%): 34.06
+Totale: 188.88 EUR

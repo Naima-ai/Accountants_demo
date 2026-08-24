@@ -30,13 +30,17 @@ import os
 
 from datasets import load_dataset, load_from_disk
 
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__))
-N_SAMPLES = 3
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "samples", "images")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+N_SAMPLES = 10
 
 # If you already have SROIE saved locally (a folder with train/, test/,
 # dataset_dict.json -- the output of datasets' save_to_disk()), put its
-# full path here to load it directly instead of downloading again.
-LOCAL_SROIE_PATH = r"C:\Users\User\Desktop\sroie"
+# full path here to load it directly instead of downloading again. Leave
+# empty to stream from the Hub -- note darentang/sroie currently fails
+# under datasets>=3.0 ("Dataset scripts are no longer supported"), an
+# upstream incompatibility, not something a local path works around.
+LOCAL_SROIE_PATH = ""
 
 
 def save_samples_from_disk(local_path: str, prefix: str, n: int = N_SAMPLES, split: str = "test"):

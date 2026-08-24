@@ -1,0 +1,17 @@
+Cartoleria Ufficio Facile Srl
+P.IVA: IT09564083720
+
+FATTURA n. 1009
+Data: 2026-07-19
+Scadenza: 2026-08-18
+
+Cliente: Rossi Impianti Srl
+
+Descrizione: Cancelleria
+Quantita: 4.24
+Prezzo unitario: 52.92
+Totale riga: 224.38
+
+Subtotale: 224.38
+IVA (22%): 49.36
+Totale: 273.74 EUR

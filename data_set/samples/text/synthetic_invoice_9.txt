@@ -1,0 +1,17 @@
+Manutenzioni Industriali Srl
+P.IVA: IT08645172930
+
+FATTURA n. 1008
+Data: 2026-07-17
+Scadenza: 2026-08-16
+
+Cliente: Verdi Logistica Srl
+
+Descrizione: Manutenzione impianto
+Quantita: 1.88
+Prezzo unitario: 315.17
+Totale riga: 592.52
+
+Subtotale: 592.52
+IVA (22%): 130.35
+Totale: 722.87 EUR
