@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 
 from src.api.api import router
+from src.api.reporting_api import router as reporting_router
+from src.database.database import init_db
 
 
 app = FastAPI(
@@ -10,3 +12,12 @@ app = FastAPI(
 )
 
 app.include_router(router)
+app.include_router(reporting_router)
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    # Creates the SQLite schema (clients, documents, journal entries,
+    # reminders, reports, review queue, ...) on first run; a no-op if
+    # the tables already exist.
+    init_db()
