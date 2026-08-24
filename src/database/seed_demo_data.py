@@ -5,25 +5,25 @@ Populates the real (non-in-memory) demo database with a full pass over
 the sample dataset: 10 documents in every format ingestion.py supports
 (XML, native PDF, scanned PDF, plain text, image) -- SROIE/CORD are real
 photographed receipts (data_set/samples/images/, see
-download_real_samples.py), the rest are synthetic Italian invoices built
-to exercise the other format code paths (data_set/samples/,
-see generate_synthetic_samples.py) -- run through the full Demo 1 chain
-and persisted, so there's real, browsable demo data instead of an empty
-database.
+src/data/download_real_samples.py), the rest are synthetic Italian
+invoices built to exercise the other format code paths
+(data_set/samples/, see src/data/generate_synthetic_samples.py) -- run
+through the full Demo 1 chain and persisted, so there's real, browsable
+demo data instead of an empty database.
 
 This is what "Database" (my Demo 1 assignment) was actually for:
 database.py defines the schema, this script is what fills it.
 
-Usage (from repo root or here, doesn't matter):
-    python generate_synthetic_samples.py         # once, or whenever you want fresh synthetic docs
-    python download_real_samples.py               # once -- pulls real SROIE/CORD images (network)
-    python src/database/seed_demo_data.py          # runs everything through the pipeline into the DB
+Usage (from repo root):
+    python src/data/generate_synthetic_samples.py   # once, or whenever you want fresh synthetic docs
+    python src/data/download_real_samples.py         # once -- pulls real SROIE/CORD images (network)
+    python src/database/seed_demo_data.py             # runs everything through the pipeline into the DB
 
 Needs Ollama running locally for full accuracy on non-XML documents
-(PDF/image/text classification+extraction fall back to the local SLM --
-see demo_1/README.md). Without it, those documents still get processed
-end-to-end but land in needs_review, same as any other low-confidence
-result -- the run itself won't fail.
+(PDF/image/text classification+extraction fall back to the local SLM).
+Without it, those documents still get processed end-to-end but land in
+needs_review, same as any other low-confidence result -- the run
+itself won't fail.
 """
 
 import glob
@@ -34,28 +34,14 @@ import sys
 logger = logging.getLogger("seed_demo_data")
 logging.basicConfig(level=logging.INFO)
 
-_CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-_SRC_DIR = os.path.dirname(_CURR_DIR)
-_BASE_DIR = os.path.dirname(_SRC_DIR)
-_DATA_SET_DIR = os.path.join(_BASE_DIR, "data_set")
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/database/seed_demo_data.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+_DATA_SET_DIR = os.path.join(_REPO_ROOT, "data_set")
 _SAMPLES_DIR = os.path.join(_DATA_SET_DIR, "samples")
-
-def _prioritize(path: str) -> None:
-    # database.py/memory.py share their filename with their parent
-    # folder, so they must be forced to the front of sys.path (in this
-    # order) or `import database`/`import memory` can resolve to the
-    # wrong thing (the package's __init__.py instead of the module).
-    # This matters especially here: this script's own directory IS
-    # src/database, which Python auto-adds to sys.path[0] before this
-    # code even runs, so a naive "insert if not present" guard leaves
-    # it stuck behind src/ once src/ gets inserted for other reasons.
-    if path in sys.path:
-        sys.path.remove(path)
-    sys.path.insert(0, path)
-
-
-for path in (_SRC_DIR, os.path.join(_SRC_DIR, "orchestration"), os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database")):
-    _prioritize(path)
 
 
 def _configure_tesseract_windows() -> None:
@@ -63,10 +49,9 @@ def _configure_tesseract_windows() -> None:
     Best-effort: on Windows, pytesseract needs to find tesseract.exe
     explicitly if it isn't on PATH. Tries a couple of common install
     locations (winget's per-user install, and the classic Program Files
-    admin install that test_pipeline_on_file.py already assumes) and
-    leaves pytesseract's default lookup alone if neither exists --
-    OCR calls fail per-document with a clear error either way, they
-    don't block the rest of the run.
+    admin install) and leaves pytesseract's default lookup alone if
+    neither exists -- OCR calls fail per-document with a clear error
+    either way, they don't block the rest of the run.
     """
     if os.name != "nt":
         return
@@ -111,15 +96,14 @@ def _ensure_samples_exist() -> None:
     )
     if missing_synthetic:
         logger.info("No synthetic samples found -- generating them now.")
-        sys.path.insert(0, _DATA_SET_DIR)
-        from generate_synthetic_samples import generate_all
+        from src.data.generate_synthetic_samples import generate_all
         generate_all(10)
 
     images_dir = os.path.join(_SAMPLES_DIR, "images")
     if not os.path.isdir(images_dir) or not glob.glob(os.path.join(images_dir, "*.png")):
         logger.warning(
             "No real sample images found in data_set/samples/images/. "
-            "Run `python data_set/download_real_samples.py` first (needs network + `datasets`) "
+            "Run `python src/data/download_real_samples.py` first (needs network + `datasets`) "
             "to pull real SROIE/CORD receipts -- continuing without them for now."
         )
 
@@ -128,8 +112,8 @@ def seed() -> None:
     _configure_tesseract_windows()
     _ensure_samples_exist()
 
-    from memory import MemoryStore
-    from demo1_orchestrator import Demo1Orchestrator
+    from src.memory.memory import MemoryStore
+    from src.orchestration.demo1_orchestrator import Demo1Orchestrator
 
     memory = MemoryStore()
     for client_id, name, tone in DEMO_CLIENTS:
@@ -196,8 +180,8 @@ def _print_summary(group_stats: dict, memory) -> None:
     print(f"\nDemo 1 review queue: {len(review_queue)} open item(s)")
 
     # The synthetic samples deliberately reuse 10 suppliers across the
-    # generated documents (see generate_synthetic_samples.py), so a
-    # supplier seen more than once per client proves the auto-learn
+    # generated documents (see src/data/generate_synthetic_samples.py),
+    # so a supplier seen more than once per client proves the auto-learn
     # path (memory.learn_supplier) actually fired during this run.
     recognized = 0
     for client_id, _, _ in DEMO_CLIENTS:
@@ -210,8 +194,7 @@ def _print_summary(group_stats: dict, memory) -> None:
 
 
 def _synthetic_suppliers():
-    sys.path.insert(0, _DATA_SET_DIR)
-    from generate_synthetic_samples import SUPPLIERS
+    from src.data.generate_synthetic_samples import SUPPLIERS
     return SUPPLIERS
 
 

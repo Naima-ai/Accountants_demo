@@ -167,10 +167,15 @@ class AccountingAgent:
 # Run: python accounting_agent.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from ingestion import IngestionPipeline
-    from classifier import DocumentClassifier
-    from extractor import FieldExtractor
-    from validator import Validator
+    import sys
+    _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if _REPO_ROOT not in sys.path:
+        sys.path.insert(0, _REPO_ROOT)
+
+    from src.ingestion.ingestion import IngestionPipeline
+    from src.classifier.classifier import DocumentClassifier
+    from src.extraction.extractor import FieldExtractor
+    from src.validation.validator import Validator
 
     pipeline = IngestionPipeline()
     clf = DocumentClassifier()
@@ -178,10 +183,7 @@ if __name__ == "__main__":
     validator = Validator()
     agent = AccountingAgent()
 
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    sample_xml = os.path.join(curr_dir, "..", "data_set", "IT01234567890_FPR01.xml")
-    if not os.path.exists(sample_xml):
-        sample_xml = os.path.join(curr_dir, "data_set", "IT01234567890_FPR01.xml")
+    sample_xml = os.path.join(_REPO_ROOT, "data_set", "IT01234567890_FPR01.xml")
 
     doc = pipeline.ingest_file(sample_xml)
     ci = doc.to_classifier_input()

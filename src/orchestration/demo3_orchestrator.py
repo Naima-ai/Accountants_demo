@@ -2,7 +2,7 @@
 demo3_orchestrator.py
 
 My Demo 3 deliverable: "Report_agent.py, Reporting/orchestration/API
-integration" (report_agent.py itself lives in demo_3/, this file is
+integration" (report_agent.py itself lives in src/agents/, this file is
 the orchestration glue).
 
 Pulls the prior period's statement from memory automatically (so
@@ -12,7 +12,7 @@ so a second call for the same client naturally has something to
 compare against, same growth pattern as Demo 1's supplier learning.
 
 Usage:
-    from demo3_orchestrator import ReportOrchestrator
+    from src.orchestration.demo3_orchestrator import ReportOrchestrator
 
     orch = ReportOrchestrator()
     report = orch.generate_report("c-001", "2026-Q2", statement)
@@ -26,32 +26,20 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger("demo3_orchestrator")
 logging.basicConfig(level=logging.INFO)
 
-_CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-_SRC_DIR = os.path.dirname(_CURR_DIR)
-_BASE_DIR = os.path.dirname(_SRC_DIR)
-_DEMO_3_DIR = os.path.join(_BASE_DIR, "demo_3")
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/orchestration/demo3_orchestrator.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-def _prioritize(path: str) -> None:
-    # See the matching comment in demo1_orchestrator.py: database.py and
-    # memory.py share their filename with their parent folder, so these
-    # must be forced to the front of sys.path (in this order) or
-    # `import database`/`import memory` can resolve to the wrong thing.
-    if path in sys.path:
-        sys.path.remove(path)
-    sys.path.insert(0, path)
-
-
-for path in (_SRC_DIR, _DEMO_3_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database")):
-    _prioritize(path)
-
-from memory import MemoryStore  # noqa: E402
+from src.memory.memory import MemoryStore
 
 
 class ReportOrchestrator:
     """Orchestrates Demo 3: fetch prior period -> analyze -> persist -> return."""
 
     def __init__(self, memory: Optional[MemoryStore] = None, agent: Optional[Any] = None):
-        from report_agent import FinancialAnalysisAgent
+        from src.agents.report_agent import FinancialAnalysisAgent
 
         self.memory = memory or MemoryStore()
         self.agent = agent or FinancialAnalysisAgent()
@@ -103,13 +91,13 @@ class ReportOrchestrator:
 if __name__ == "__main__":
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     import importlib
-    import config as _config
+    import src.config as _config
     importlib.reload(_config)
-    import database as _database
+    import src.database.database as _database
     importlib.reload(_database)
-    import memory as _memory
+    import src.memory.memory as _memory
     importlib.reload(_memory)
-    from memory import MemoryStore  # noqa: F811, E402
+    from src.memory.memory import MemoryStore  # noqa: F811, E402
 
     mem = MemoryStore()
     mem.upsert_client("c-001", "Rossi Impianti Srl")

@@ -10,14 +10,14 @@ the "from a raw statement, a letter ready to send in 1 minute" wow
 moment from the brief.
 
 Ratio math and anomaly detection are deterministic (no model call,
-mirrors demo_1's validator.py philosophy of keeping anything checkable
-out of the SLM's hands). Only the narrative write-up goes through the
-local model, via the same ollama_client.py demo_1 already uses -- and
-falls back to a template narrative if Ollama isn't reachable, so this
-agent (and its self-test) works with zero external services.
+mirrors validator.py's philosophy of keeping anything checkable out of
+the SLM's hands). Only the narrative write-up goes through the local
+model, via the shared src/llm/ollama_client.py -- and falls back to a
+template narrative if Ollama isn't reachable, so this agent (and its
+self-test) works with zero external services.
 
 Usage:
-    from report_agent import FinancialAnalysisAgent
+    from src.agents.report_agent import FinancialAnalysisAgent
 
     agent = FinancialAnalysisAgent()
     report = agent.analyze("Rossi Impianti Srl", "2026-Q2", statement, prior_statement)
@@ -36,37 +36,21 @@ from pydantic import BaseModel
 logger = logging.getLogger("report_agent")
 logging.basicConfig(level=logging.INFO)
 
-_CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-_BASE_DIR = os.path.dirname(_CURR_DIR)
-_DEMO_1_DIR = os.path.join(_BASE_DIR, "demo_1")
-if _DEMO_1_DIR not in sys.path:
-    sys.path.insert(0, _DEMO_1_DIR)
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/agents/report_agent.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 try:
-    from ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama
+    from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama
     _OLLAMA_AVAILABLE = True
 except ImportError:
     _OLLAMA_AVAILABLE = False
     OLLAMA_HOST, OLLAMA_MODEL = "http://localhost:11434", "qwen2.5:7b-instruct"
 
-try:
-    from config import DEFAULT_BENCHMARKS, ANOMALY_MARGIN_DECLINE_PCT_POINTS, \
-        ANOMALY_DSO_INCREASE_DAYS, ANOMALY_CASH_STRAIN_CURRENT_RATIO
-except ImportError:
-    _SRC_DIR = os.path.join(_BASE_DIR, "src")
-    if _SRC_DIR not in sys.path:
-        sys.path.insert(0, _SRC_DIR)
-    try:
-        from config import DEFAULT_BENCHMARKS, ANOMALY_MARGIN_DECLINE_PCT_POINTS, \
-            ANOMALY_DSO_INCREASE_DAYS, ANOMALY_CASH_STRAIN_CURRENT_RATIO
-    except ImportError:
-        DEFAULT_BENCHMARKS = {
-            "gross_margin_pct": 40.0, "net_margin_pct": 8.0, "current_ratio": 1.5,
-            "quick_ratio": 1.0, "dso_days": 45.0, "debt_to_equity": 1.0,
-        }
-        ANOMALY_MARGIN_DECLINE_PCT_POINTS = 3.0
-        ANOMALY_DSO_INCREASE_DAYS = 10.0
-        ANOMALY_CASH_STRAIN_CURRENT_RATIO = 1.0
+from src.config import DEFAULT_BENCHMARKS, ANOMALY_MARGIN_DECLINE_PCT_POINTS, \
+    ANOMALY_DSO_INCREASE_DAYS, ANOMALY_CASH_STRAIN_CURRENT_RATIO
 
 
 # ----------------------------------------------------------------------

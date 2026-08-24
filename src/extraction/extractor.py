@@ -13,9 +13,9 @@ Two-stage approach, mirroring classifier.py:
      ask the local Ollama model to extract the same field set as JSON.
 
 Usage:
-    from ingestion import IngestionPipeline
-    from classifier import DocumentClassifier, DocumentType
-    from extractor import FieldExtractor
+    from src.ingestion.ingestion import IngestionPipeline
+    from src.classifier.classifier import DocumentClassifier, DocumentType
+    from src.extraction.extractor import FieldExtractor
 
     doc = IngestionPipeline().ingest_file("invoice.xml")
     ci = doc.to_classifier_input()
@@ -27,11 +27,18 @@ Usage:
 import logging
 import os
 import re
+import sys
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 
-from ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/extraction/extractor.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
 
 logger = logging.getLogger("extractor")
 logging.basicConfig(level=logging.INFO)
@@ -342,17 +349,14 @@ JSON:"""
 # Quick manual test: structured XML path needs no model call.
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from ingestion import IngestionPipeline
-    from classifier import DocumentClassifier
+    from src.ingestion.ingestion import IngestionPipeline
+    from src.classifier.classifier import DocumentClassifier
 
     pipeline = IngestionPipeline()
     clf = DocumentClassifier()
     extractor = FieldExtractor()
 
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    sample_xml = os.path.join(curr_dir, "..", "data_set", "IT01234567890_FPR01.xml")
-    if not os.path.exists(sample_xml):
-        sample_xml = os.path.join(curr_dir, "data_set", "IT01234567890_FPR01.xml")
+    sample_xml = os.path.join(_REPO_ROOT, "data_set", "IT01234567890_FPR01.xml")
 
     doc = pipeline.ingest_file(sample_xml)
     ci = doc.to_classifier_input()

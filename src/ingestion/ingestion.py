@@ -1,8 +1,12 @@
 """
 ingestion.py
 
+Converts heterogeneous accounting documents (XML e-invoices, PDFs,
+scanned receipts/images, TXT, CSV exports) into a single normalized
+IngestedDocument, defined in schemas.py.
+
 Usage:
-    from ingestion import IngestionPipeline
+    from src.ingestion.ingestion import IngestionPipeline
 
     pipeline = IngestionPipeline()
     doc = pipeline.ingest_file("invoice.pdf")
@@ -22,10 +26,10 @@ import fitz  # PyMuPDF
 import pdfplumber
 import pandas as pd
 from lxml import etree
-from PIL import Image, ImageOps
+from PIL import Image
 import pytesseract
 
-from schemas import (
+from src.ingestion.schemas import (
     IngestedDocument, PageContent, TableData,
     SourceFileType, ExtractionMethod,
 )
@@ -39,15 +43,6 @@ OCR_TEXT_THRESHOLD = 20
 
 # Below this average OCR confidence, flag the document for human review.
 OCR_CONFIDENCE_WARNING_THRESHOLD = 60
-
-# Pixel intensity (0-255) used to binarize preprocessed images before OCR.
-# Anything darker than this becomes black, anything lighter becomes white.
-OCR_BINARIZE_THRESHOLD = 150
-
-# Tesseract page segmentation mode used for the preprocessed OCR path.
-# 6 = "assume a single uniform block of text", which works well for
-# receipts/invoices after binarization.
-OCR_PSM_CONFIG = "--psm 6"
 
 
 class BaseIngestor:
@@ -109,8 +104,21 @@ class PDFIngestor(BaseIngestor):
                 any_scanned = True
                 pix = page.get_pixmap(dpi=300)
                 img = Image.open(io.BytesIO(pix.tobytes("png")))
-                preprocessed = _preprocess_for_ocr(img)
-                page_text, ocr_conf = _run_ocr(preprocessed, config=OCR_PSM_CONFIG)
+                try:
+                    ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+                except Exception as e:
+                    # Same failure mode ImageIngestor already guards against
+                    # (e.g. tesseract not installed) -- fail this document
+                    # cleanly instead of raising past a partially-built doc.
+                    doc.success = False
+                    doc.error = f"OCR failed on page {page_num + 1}: {e}"
+                    pdf.close()
+                    return doc
+                words = [w for w in ocr_data["text"] if w.strip()]
+                confs = [int(c) for c, w in zip(ocr_data["conf"], ocr_data["text"])
+                         if w.strip() and c != "-1"]
+                page_text = " ".join(words)
+                ocr_conf = (sum(confs) / len(confs)) if confs else None
                 method = ExtractionMethod.OCR
                 if ocr_conf is not None and ocr_conf < OCR_CONFIDENCE_WARNING_THRESHOLD:
                     doc.warnings.append(
@@ -232,7 +240,7 @@ class CSVIngestor(BaseIngestor):
         doc.metadata["columns"] = df.columns.tolist()
         return doc
 
-        
+
 class TextIngestor(BaseIngestor):
     """Handles plain-text documents."""
 
@@ -262,33 +270,6 @@ class TextIngestor(BaseIngestor):
             return doc
 
 
-def _preprocess_for_ocr(img: Image.Image) -> Image.Image:
-    """
-    Grayscale -> autocontrast -> binarize.
-
-    This is the fix validated in ocr_fix_comparison.py's ocr_with_fix():
-    plain pytesseract.image_to_data() on the raw RGB image (the old
-    ocr_as_is() behavior) produced noticeably lower-confidence, noisier
-    OCR on scanned receipts than running it on a cleaned-up black/white
-    version of the image.
-    """
-    gray = ImageOps.grayscale(img)
-    contrast = ImageOps.autocontrast(gray)
-    binarized = contrast.point(lambda x: 0 if x < OCR_BINARIZE_THRESHOLD else 255, "1")
-    return binarized
-
-
-def _run_ocr(img: Image.Image, config: str = ""):
-    """Runs pytesseract on `img` and returns (joined_text, avg_confidence)."""
-    ocr_data = pytesseract.image_to_data(img, config=config, output_type=pytesseract.Output.DICT)
-    words = [w for w in ocr_data["text"] if w.strip()]
-    confs = [int(c) for c, w in zip(ocr_data["conf"], ocr_data["text"])
-             if w.strip() and c != "-1"]
-    text = " ".join(words)
-    avg_conf = (sum(confs) / len(confs)) if confs else None
-    return text, avg_conf
-
-
 class ImageIngestor(BaseIngestor):
     """Handles photos/scans of receipts and invoices via OCR."""
 
@@ -302,8 +283,12 @@ class ImageIngestor(BaseIngestor):
             return doc
 
         try:
-            preprocessed = _preprocess_for_ocr(img)
-            text, avg_conf = _run_ocr(preprocessed, config=OCR_PSM_CONFIG)
+            ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+            words = [w for w in ocr_data["text"] if w.strip()]
+            confs = [int(c) for c, w in zip(ocr_data["conf"], ocr_data["text"])
+                     if w.strip() and c != "-1"]
+            text = " ".join(words)
+            avg_conf = (sum(confs) / len(confs)) if confs else None
         except Exception as e:
             doc.success = False
             doc.error = f"OCR failed: {e}"

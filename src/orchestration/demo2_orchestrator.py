@@ -4,20 +4,20 @@ demo2_orchestrator.py
 My Demo 2 deliverable: "memory/status integration, orchestration".
 
 Cross-checks each client's document checklist (via memory.py) against
-what's been received, and for anything missing, asks demo_2's reminder
-agent to draft + "send" a personalized reminder, then logs the result
-back into memory so status/dashboard queries stay accurate.
+what's been received, and for anything missing, asks a reminder agent
+to draft + "send" a personalized reminder, then logs the result back
+into memory so status/dashboard queries stay accurate.
 
-demo_2/reminder_agent.py is Chrislin/Harith's file and isn't implemented
-yet (it's currently an empty stub). Rather than block on that, this
-orchestrator defines the contract it expects (draft_reminder /
-send_reminder) and falls back to a minimal built-in template agent when
-the real one isn't available -- so the orchestration + memory/status
-path is fully testable today, and swaps to the real agent automatically
-the moment demo_2/reminder_agent.py implements ReminderAgent.
+No real reminder agent exists yet (demo_2/ was removed during the
+src/ restructuring). Rather than block on that, this orchestrator
+defines the contract it expects (draft_reminder / send_reminder) and
+falls back to a minimal built-in template agent when a real one isn't
+available -- so the orchestration + memory/status path is fully
+testable today, and swaps to the real agent automatically the moment
+src/agents/reminder_agent.py implements ReminderAgent.
 
 Usage:
-    from demo2_orchestrator import ReminderOrchestrator
+    from src.orchestration.demo2_orchestrator import ReminderOrchestrator
 
     orch = ReminderOrchestrator()
     orch.memory.seed_expected_documents("c-001", "2026-07", ["bank_statement", "sales_invoices"])
@@ -33,39 +33,23 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("demo2_orchestrator")
 logging.basicConfig(level=logging.INFO)
 
-_CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-_SRC_DIR = os.path.dirname(_CURR_DIR)
-_BASE_DIR = os.path.dirname(_SRC_DIR)
-_DEMO_2_DIR = os.path.join(_BASE_DIR, "demo_2")
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/orchestration/demo2_orchestrator.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
-def _prioritize(path: str) -> None:
-    # See the matching comment in demo1_orchestrator.py: database.py and
-    # memory.py share their filename with their parent folder, so these
-    # must be forced to the front of sys.path (in this order) or
-    # `import database`/`import memory` can resolve to the wrong thing.
-    if path in sys.path:
-        sys.path.remove(path)
-    sys.path.insert(0, path)
-
-
-for path in (_SRC_DIR, _DEMO_2_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, "database")):
-    _prioritize(path)
-
-try:
-    from config import REMINDER_DEFAULT_CHANNEL, REMINDER_MAX_FOLLOWUPS, REMINDER_MANUAL_MINUTES_PER_DOC
-except ImportError:
-    REMINDER_DEFAULT_CHANNEL, REMINDER_MAX_FOLLOWUPS, REMINDER_MANUAL_MINUTES_PER_DOC = "email", 3, 12.0
-
-from memory import MemoryStore  # noqa: E402
+from src.config import REMINDER_DEFAULT_CHANNEL, REMINDER_MAX_FOLLOWUPS, REMINDER_MANUAL_MINUTES_PER_DOC
+from src.memory.memory import MemoryStore
 
 
 class FallbackReminderAgent:
     """
-    Minimal template-based stand-in for demo_2/reminder_agent.py, used
-    only until that file implements ReminderAgent. Keeps the same
-    draft_reminder(client, missing_doc, follow_up_number) -> str
+    Minimal template-based stand-in for a real reminder agent. Keeps the
+    same draft_reminder(client, missing_doc, follow_up_number) -> str
     contract so swapping in the real agent (an SLM-drafted, per-client-
-    tone message) requires no orchestrator changes.
+    tone message, expected at src/agents/reminder_agent.py) requires no
+    orchestrator changes.
     """
 
     _DOC_TYPE_LABELS = {
@@ -109,11 +93,11 @@ class ReminderOrchestrator:
     @staticmethod
     def _load_reminder_agent() -> Any:
         try:
-            from reminder_agent import ReminderAgent  # demo_2/reminder_agent.py
-            logger.info("Using real ReminderAgent from demo_2/reminder_agent.py")
+            from src.agents.reminder_agent import ReminderAgent
+            logger.info("Using real ReminderAgent from src/agents/reminder_agent.py")
             return ReminderAgent()
         except Exception as e:
-            logger.info(f"demo_2/reminder_agent.py not available yet ({e}) -- using FallbackReminderAgent")
+            logger.info(f"src/agents/reminder_agent.py not available yet ({e}) -- using FallbackReminderAgent")
             return FallbackReminderAgent()
 
     def run_for_client(self, client_id: str, period: str) -> Dict[str, Any]:
@@ -191,18 +175,18 @@ class ReminderOrchestrator:
 # ----------------------------------------------------------------------
 # Quick manual test: seeds a 3-client roster with a mix of complete and
 # missing documents, runs the roster, and checks the dashboard reflects
-# it. Run: python demo2_orchestrator.py
+# it. Run: python src/orchestration/demo2_orchestrator.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     import importlib
-    import config as _config
+    import src.config as _config
     importlib.reload(_config)
-    import database as _database
+    import src.database.database as _database
     importlib.reload(_database)
-    import memory as _memory
+    import src.memory.memory as _memory
     importlib.reload(_memory)
-    from memory import MemoryStore  # noqa: F811, E402
+    from src.memory.memory import MemoryStore  # noqa: F811, E402
 
     mem = MemoryStore()
     period = "2026-07"

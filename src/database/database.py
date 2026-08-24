@@ -9,7 +9,7 @@ only module that should import from here directly -- everything else
 (orchestrators, agents, API) goes through memory.py.
 
 Usage:
-    from database import init_db, session_scope
+    from src.database.database import init_db, session_scope
 
     init_db()  # once, at app startup
     with session_scope() as session:
@@ -17,6 +17,8 @@ Usage:
 """
 
 import logging
+import os
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Optional
@@ -28,13 +30,13 @@ from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker, Session,
 )
 
-try:
-    from config import DATABASE_URL, ensure_dirs
-except ImportError:  # pragma: no cover - allows running this file standalone
-    import os
-    import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from config import DATABASE_URL, ensure_dirs
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/database/database.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.config import DATABASE_URL, ensure_dirs
 
 logger = logging.getLogger("database")
 logging.basicConfig(level=logging.INFO)
@@ -299,11 +301,10 @@ def session_scope():
 # Run: python database.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    import os
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     # Re-read config with the override in place.
     import importlib
-    import config as _config
+    import src.config as _config
     importlib.reload(_config)
 
     DATABASE_URL = _config.DATABASE_URL  # noqa: F811 - test-only override

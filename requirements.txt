@@ -15,6 +15,6 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 
-# Optional: PDF export for Demo 3 advisory letters (demo_3/report_agent.py
+# Optional: PDF export for Demo 3 advisory letters (src/agents/report_agent.py
 # falls back to text-only if this isn't installed)
 reportlab>=4.0

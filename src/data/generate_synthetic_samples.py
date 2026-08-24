@@ -26,9 +26,10 @@ import random
 from datetime import date, timedelta
 from xml.sax.saxutils import escape as xml_escape
 
-CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-SAMPLES_DIR = os.path.join(CURR_DIR, "samples")
-COA_PATH = os.path.join(CURR_DIR, "chart_of_accounts.json")
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_SET_DIR = os.path.join(_REPO_ROOT, "data_set")
+SAMPLES_DIR = os.path.join(DATA_SET_DIR, "samples")
+COA_PATH = os.path.join(DATA_SET_DIR, "chart_of_accounts.json")
 
 random.seed(42)  # reproducible demo dataset
 
