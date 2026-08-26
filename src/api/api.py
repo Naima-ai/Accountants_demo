@@ -1,14 +1,20 @@
-#dummy endpoint for demo 1, to be replaced with the actual orchestrator call
+from typing import Any, List, Optional
 
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
-from typing import Any, List
+
+from ..agents.reminder_agent import ReminderAgent, ReminderResult
 
 
 router = APIRouter(
     prefix="/api",
-    tags=["Demo 1"],
+    tags=["Demo 1", "Demo 2"],
 )
+
+
+# ----------------------------------------------------------------------
+# Demo 1 - Response Models
+# ----------------------------------------------------------------------
 
 
 class LineItem(BaseModel):
@@ -55,12 +61,55 @@ class ProcessResponse(BaseModel):
     accounting: AccountingData
 
 
+# ----------------------------------------------------------------------
+# Demo 2 - Request Models
+# ----------------------------------------------------------------------
+
+
+class DocumentCheckRequest(BaseModel):
+    client_id: str
+    client_name: Optional[str] = None
+    period: str
+    expected_documents: List[str]
+    received_documents: List[str]
+
+
+class FollowUpRequest(BaseModel):
+    client_id: str
+    client_name: Optional[str] = None
+    period: str
+    expected_documents: List[str]
+    received_documents: List[str]
+    days: int = 3
+
+
+# ----------------------------------------------------------------------
+# Agents
+# ----------------------------------------------------------------------
+
+
+reminder_agent = ReminderAgent()
+
+
+# ----------------------------------------------------------------------
+# Demo 1 - Document Processing
+# ----------------------------------------------------------------------
+
 
 @router.post(
     "/demo-1/process",
     response_model=ProcessResponse,
 )
-async def process_demo_1(file: UploadFile = File(...)):
+async def process_demo_1(
+    file: UploadFile = File(...),
+):
+    """
+    Demo 1 document processing endpoint.
+
+    Currently returns dummy data.
+    The LangGraph orchestrator will be connected later.
+    """
+
     return {
         "status": "success",
         "document": {
@@ -109,3 +158,56 @@ async def process_demo_1(file: UploadFile = File(...)):
             ],
         },
     }
+
+
+# ----------------------------------------------------------------------
+# Demo 2 - Document Collection
+# ----------------------------------------------------------------------
+
+
+@router.post(
+    "/demo-2/check-documents",
+    response_model=ReminderResult,
+)
+async def check_demo_2_documents(
+    request: DocumentCheckRequest,
+):
+    """
+    Demo 2:
+    Compare expected client documents with received documents
+    and generate a reminder when documents are missing.
+    """
+
+    return reminder_agent.check_documents(
+        client_id=request.client_id,
+        client_name=request.client_name,
+        period=request.period,
+        expected_documents=request.expected_documents,
+        received_documents=request.received_documents,
+    )
+
+
+@router.post(
+    "/demo-2/follow-up",
+    response_model=ReminderResult,
+)
+async def schedule_demo_2_follow_up(
+    request: FollowUpRequest,
+):
+    """
+    Demo 2:
+    Check for missing documents and schedule a follow-up.
+    """
+
+    result = reminder_agent.check_documents(
+        client_id=request.client_id,
+        client_name=request.client_name,
+        period=request.period,
+        expected_documents=request.expected_documents,
+        received_documents=request.received_documents,
+    )
+
+    return reminder_agent.schedule_follow_up(
+        result,
+        days=request.days,
+    )

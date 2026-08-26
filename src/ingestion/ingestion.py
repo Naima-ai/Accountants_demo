@@ -25,7 +25,7 @@ from lxml import etree
 from PIL import Image, ImageOps
 import pytesseract
 
-from schemas import (
+from ..database.schemas import (
     IngestedDocument, PageContent, TableData,
     SourceFileType, ExtractionMethod,
 )

@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
-    from database import (
+    from ..database.database import (
         Client, Document, JournalEntry, JournalLine, SupplierPattern,
         ExpectedDocument, ReminderLog, FinancialStatement, AnalysisReport,
         ReviewQueueItem, session_scope, init_db,
@@ -41,7 +41,7 @@ except ImportError:  # pragma: no cover - allows running this file standalone
     import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database"))
-    from database import (
+    from ..database.database import (
         Client, Document, JournalEntry, JournalLine, SupplierPattern,
         ExpectedDocument, ReminderLog, FinancialStatement, AnalysisReport,
         ReviewQueueItem, session_scope, init_db,

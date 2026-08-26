@@ -1,0 +1,69 @@
+{
+  "_source_note": "Top-level structure (stato_patrimoniale_attivo/passivo, conto_economico) is the real Italian Civil Code statutory structure (Art. 2424/2425), matching chart_of_accounts_reference.json. The 'categories' arrays nested under conto_economico are a synthetic granular layer built for this demo, using common Italian bookkeeping account groupings (consistent with CNDCEC/OIC practice) so line items from real invoices have something concrete to be checked against. Not an official downloadable file -- none exists -- but a reasonable, defensible synthetic layer as instructed in the idea-map doc.",
+
+  "stato_patrimoniale_attivo": [
+    {"code": "A", "name": "Crediti verso soci per versamenti ancora dovuti"},
+    {"code": "B", "name": "Immobilizzazioni (Fixed Assets)", "subcategories": ["Immateriali", "Materiali", "Finanziarie"],
+      "categories": [
+        {"code": "B-II-01", "name": "Impianti e macchinari", "keywords": ["macchinario", "impianto", "attrezzatura industriale"]},
+        {"code": "B-II-02", "name": "Attrezzature e arredi", "keywords": ["arredo", "mobili ufficio", "attrezzatura", "scrivania"]},
+        {"code": "B-II-03", "name": "Hardware e dispositivi elettronici", "keywords": ["computer", "laptop", "server", "notebook", "monitor", "stampante"]},
+        {"code": "B-I-01", "name": "Software e licenze", "keywords": ["licenza software", "abbonamento software", "saas"]}
+      ]},
+    {"code": "C", "name": "Attivo circolante (Current Assets)", "subcategories": ["Rimanenze", "Crediti", "Attivita finanziarie", "Disponibilita liquide"]},
+    {"code": "D", "name": "Ratei e risconti attivi"}
+  ],
+
+  "stato_patrimoniale_passivo": [
+    {"code": "A", "name": "Patrimonio netto (Equity)"},
+    {"code": "B", "name": "Fondi per rischi e oneri"},
+    {"code": "C", "name": "Trattamento di fine rapporto (TFR)"},
+    {"code": "D", "name": "Debiti (Liabilities)"},
+    {"code": "E", "name": "Ratei e risconti passivi"}
+  ],
+
+  "conto_economico": [
+    {
+      "code": "A", "name": "Valore della produzione (Revenue)",
+      "categories": [
+        {"code": "A-01", "name": "Ricavi delle vendite e delle prestazioni", "keywords": ["vendita", "fattura vendita", "prestazione di servizi", "ricavo", "corrispettivo"]},
+        {"code": "A-05", "name": "Altri ricavi e proventi", "keywords": ["rimborso", "contributo", "altro ricavo", "sopravvenienza attiva"]}
+      ]
+    },
+    {
+      "code": "B", "name": "Costi della produzione (Operating Costs)",
+      "categories": [
+        {"code": "B-06", "name": "Materie prime, sussidiarie, di consumo e merci", "keywords": ["materie prime", "materiale di consumo", "merce", "forniture", "materiali"]},
+        {"code": "B-07-UTIL", "name": "Utenze (energia, gas, acqua, telefonia)", "keywords": ["energia elettrica", "bolletta gas", "bolletta acqua", "utenza idrica", "telefonia", "internet", "adsl", "utenza", "bolletta"]},
+        {"code": "B-07-REPR", "name": "Spese di rappresentanza e vitto (business meals/hospitality)", "keywords": ["ristorante", "pizzeria", "pizza", "trattoria", "bar", "caffetteria", "cena di lavoro", "pranzo di lavoro", "catering", "tiramisu", "menu", "acqua naturale", "acqua minerale", "bevanda", "bibita", "vino", "caffe"]},
+        {"code": "B-07-CONS", "name": "Consulenze professionali", "keywords": ["consulenza", "commercialista", "avvocato", "spese legali", "notaio", "revisore"]},
+        {"code": "B-07-MANU", "name": "Manutenzioni e riparazioni", "keywords": ["manutenzione", "riparazione", "assistenza tecnica"]},
+        {"code": "B-07-TRAS", "name": "Trasporti e spedizioni", "keywords": ["trasporto", "spedizione", "corriere", "logistica", "consegna"]},
+        {"code": "B-07-ASSI", "name": "Assicurazioni", "keywords": ["assicurazione", "polizza"]},
+        {"code": "B-07-MARK", "name": "Pubblicita e marketing", "keywords": ["pubblicita", "marketing", "promozione", "advertising"]},
+        {"code": "B-07-VARI", "name": "Altri servizi", "keywords": ["servizio", "prestazione", "fornitura"]},
+        {"code": "B-08", "name": "Godimento di beni di terzi (affitti, leasing, noleggi)", "keywords": ["affitto", "locazione", "canone", "leasing", "noleggio"]},
+        {"code": "B-09", "name": "Costi per il personale", "keywords": ["stipendio", "salario", "retribuzione", "contributi inps", "tfr", "busta paga"]},
+        {"code": "B-10", "name": "Ammortamenti e svalutazioni", "keywords": ["ammortamento", "svalutazione"]},
+        {"code": "B-14", "name": "Oneri diversi di gestione", "keywords": ["bollo", "imposta di bollo", "multa", "sanzione", "quota associativa", "abbonamento", "cancelleria"]}
+      ]
+    },
+    {
+      "code": "C", "name": "Proventi e oneri finanziari (Financial Income/Expenses)",
+      "categories": [
+        {"code": "C-17", "name": "Interessi e oneri finanziari", "keywords": ["interesse", "commissione bancaria", "onere finanziario", "spese bancarie"]}
+      ]
+    },
+    {"code": "D", "name": "Rettifiche di valore di attivita finanziarie"},
+    {"code": "E", "name": "Imposte sul reddito (Taxes)",
+      "categories": [
+        {"code": "E-22", "name": "Imposte dirette e indirette", "keywords": ["ires", "irap", "imposta", "tassa"]}
+      ]
+    }
+  ],
+
+  "vat_rates": {
+    "valid_rates_percent": [0, 4, 5, 10, 22],
+    "notes": "Standard Italian VAT (IVA) rates. 0% typically means exempt/non-taxable (esente/non imponibile) rather than a taxable 0-rated line -- worth a closer look, not necessarily an error."
+  }
+}

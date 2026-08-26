@@ -35,7 +35,7 @@ for path in (_SRC_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, 
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from memory import MemoryStore  # noqa: E402
+from ..memory.memory import MemoryStore  # noqa: E402
 
 
 class Demo1Orchestrator:
@@ -46,11 +46,11 @@ class Demo1Orchestrator:
         # can be imported even in environments where demo_1's deps
         # (PyMuPDF, pytesseract, ...) aren't installed, as long as nobody
         # actually calls process_file/process_folder.
-        from ingestion import IngestionPipeline
-        from classifier import DocumentClassifier
-        from extractor import FieldExtractor
-        from validator import Validator
-        from accounting_agent import AccountingAgent
+        from ..ingestion.ingestion import IngestionPipeline
+        from ..extraction.classifier import DocumentClassifier
+        from ..extraction.extractor import FieldExtractor
+        from ..validation.validator import Validator
+        from ..agents.accounting_agent import AccountingAgent
 
         self.pipeline = IngestionPipeline()
         self.classifier = DocumentClassifier()
@@ -175,13 +175,14 @@ class Demo1Orchestrator:
 if __name__ == "__main__":
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     import importlib
+    from .. import config as _config
     import config as _config
     importlib.reload(_config)
-    import database as _database
+    from ..database import database as _database
     importlib.reload(_database)
-    import memory as _memory
+    from ..memory import memory as _memory
     importlib.reload(_memory)
-    from memory import MemoryStore  # noqa: F811, E402
+    from ..memory.memory import MemoryStore  # noqa: F811, E402
 
     sample_xml = os.path.join(_BASE_DIR, "data_set", "IT01234567890_FPR01.xml")
 

@@ -35,7 +35,7 @@ for path in (_SRC_DIR, os.path.join(_SRC_DIR, "memory"), os.path.join(_SRC_DIR, 
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from memory import MemoryStore  # noqa: E402
+from ..memory.memory import MemoryStore  # noqa: E402
 
 
 class ReportOrchestrator:

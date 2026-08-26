@@ -1,23 +1,20 @@
 from fastapi import FastAPI
 
-from src.api.api import router
-from src.api.reporting_api import router as reporting_router
-from src.database.database import init_db
+from .api.api import router
 
 
 app = FastAPI(
-    title="AI Accounting Demo",
+    title="Accountants Demo API",
     version="0.1.0",
-    description="AI-powered accounting workflow API",
+    description="accounting workflow API",
 )
 
 app.include_router(router)
-app.include_router(reporting_router)
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    # Creates the SQLite schema (clients, documents, journal entries,
-    # reminders, reports, review queue, ...) on first run; a no-op if
-    # the tables already exist.
-    init_db()
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "ok",
+        "service": "accountants-demo",
+    }
