@@ -211,6 +211,7 @@ export default function Demo1DocToData() {
                 <strong>{String(extraction.supplier_name ?? "—")}</strong>{" "}
                 <ConfidenceBadge value={extraction.confidence} />
               </p>
+              <p className="muted">P.IVA {String(extraction.supplier_vat ?? "—")}</p>
               <p className="muted">
                 doc #{String(extraction.document_number ?? "—")} · {String(extraction.document_date ?? "—")} ·{" "}
                 {String(extraction.total_amount ?? "—")} {String(extraction.currency ?? "")}
@@ -241,10 +242,12 @@ export default function Demo1DocToData() {
                   <span className="badge warn">pending review</span>
                 )}
               </p>
+              <p className="muted">{String(journal.description ?? "")}</p>
               <table>
                 <thead>
                   <tr>
                     <th>Account</th>
+                    <th>Description</th>
                     <th>Dare</th>
                     <th>Avere</th>
                   </tr>
@@ -253,6 +256,7 @@ export default function Demo1DocToData() {
                   {(journal.lines ?? []).map((line: any, i: number) => (
                     <tr key={i}>
                       <td>{line.account_name}</td>
+                      <td>{line.description ?? ""}</td>
                       <td>{line.debit ?? ""}</td>
                       <td>{line.credit ?? ""}</td>
                     </tr>
@@ -260,6 +264,62 @@ export default function Demo1DocToData() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 14 }}>
+            <h3>All extracted fields</h3>
+            <table>
+              <tbody>
+                {[
+                  ["Supplier", extraction.supplier_name],
+                  ["Supplier P.IVA", extraction.supplier_vat],
+                  ["Customer", extraction.customer_name],
+                  ["Document number", extraction.document_number],
+                  ["Document date", extraction.document_date],
+                  ["Due date", extraction.due_date],
+                  ["Currency", extraction.currency],
+                  ["Subtotal", extraction.subtotal],
+                  ["VAT amount", extraction.vat_amount],
+                  ["Total amount", extraction.total_amount],
+                  ["IBAN", extraction.iban],
+                  ["Extraction method", extraction.method],
+                  ["Notes", extraction.notes],
+                ].map(([label, value]) => (
+                  <tr key={label as string}>
+                    <th style={{ width: 180 }}>{label}</th>
+                    <td>{value === null || value === undefined || value === "" ? "—" : String(value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {(extraction.line_items ?? []).length > 0 && (
+              <>
+                <h3 style={{ marginTop: 16 }}>Line items</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th>Qty</th>
+                      <th>Unit price</th>
+                      <th>Total</th>
+                      <th>VAT %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(extraction.line_items as any[]).map((li, i) => (
+                      <tr key={i}>
+                        <td>{li.description ?? "—"}</td>
+                        <td>{li.quantity ?? "—"}</td>
+                        <td>{li.unit_price ?? "—"}</td>
+                        <td>{li.total ?? "—"}</td>
+                        <td>{li.vat_rate ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
 
           {result.supplier_hint && (

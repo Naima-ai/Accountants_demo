@@ -239,6 +239,34 @@ class FieldExtractor:
             return None
         return value
 
+    # OCR (via Tesseract, on scanned/photographed documents) commonly
+    # confuses a printed "IT" VAT-prefix with visually similar digits --
+    # "1T00834710156" instead of "IT00834710156" is the single most
+    # common case (capital I misread as digit 1). Only correct the
+    # 2-character country-code prefix, and only when doing so yields
+    # exactly "IT" against an otherwise well-formed 11-digit number --
+    # never touch the digits themselves, since a real misread there
+    # isn't something a heuristic can safely undo (that stays a job for
+    # validator.py's review-queue flag).
+    _VAT_PREFIX_OCR_CONFUSABLES = {"1": "I", "L": "I", "0": "O", "5": "S", "8": "B", "2": "Z"}
+    _VAT_SHAPE_RE = re.compile(r"^(.{2})(\d{11})$")
+
+    def _fix_vat_ocr_confusion(self, vat: Optional[str]) -> Optional[str]:
+        if not vat:
+            return vat
+        s = vat.strip().upper().replace(" ", "")
+        match = self._VAT_SHAPE_RE.match(s)
+        if not match:
+            return vat
+        prefix, digits = match.groups()
+        if prefix == "IT":
+            return f"IT{digits}"
+        fixed_prefix = "".join(self._VAT_PREFIX_OCR_CONFUSABLES.get(ch, ch) for ch in prefix)
+        if fixed_prefix == "IT":
+            logger.info(f"Corrected likely OCR misread in VAT prefix: {vat!r} -> IT{digits}")
+            return f"IT{digits}"
+        return vat
+
     # ------------------------------------------------------------------
     # Path 2: local SLM extraction (PDFs, images, receipts, other)
     # ------------------------------------------------------------------
@@ -270,7 +298,7 @@ class FieldExtractor:
             doc_id=doc_id,
             document_type=doc_type_str,
             supplier_name=self._sanitize_value(parsed.get("supplier_name")),
-            supplier_vat=self._sanitize_value(parsed.get("supplier_vat")),
+            supplier_vat=self._sanitize_value(self._fix_vat_ocr_confusion(parsed.get("supplier_vat"))),
             customer_name=self._sanitize_value(parsed.get("customer_name")),
             document_number=parsed.get("document_number"),
             document_date=parsed.get("document_date"),
