@@ -9,6 +9,7 @@ requests>=2.31.0
 json-repair>=0.25.0
 datasets>=2.14.0
 huggingface_hub>=0.19.0
+Faker>=25.0
 # Local SLM: in-process llama.cpp, replaces the old Ollama daemon client.
 # On Windows (confirmed on this repo's dev box, Python 3.12), plain
 # `pip install -r requirements.txt` fails building llama-cpp-python from

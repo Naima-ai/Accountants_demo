@@ -70,10 +70,14 @@ def _load_coa_keyword(code: str) -> str:
     return "servizio"
 
 
-def _make_invoice_data(i: int) -> dict:
+def _make_invoice_data(i: int, customer: "tuple[str, str] | None" = None, doc_date: "date | None" = None) -> dict:
+    """`customer` defaults to cycling the fixed 3-entry CUSTOMERS list
+    (unchanged behavior for generate_all() below); generate_client_roster.py
+    passes each real synthetic client in instead, so roster invoices are
+    billed to the actual client, not one of these 3 placeholders."""
     supplier_name, supplier_vat, keywords, coa_code = SUPPLIERS[i % len(SUPPLIERS)]
-    customer_name, customer_cf = CUSTOMERS[i % len(CUSTOMERS)]
-    doc_date = date(2026, 7, 1) + timedelta(days=i * 2)
+    customer_name, customer_cf = customer if customer is not None else CUSTOMERS[i % len(CUSTOMERS)]
+    doc_date = doc_date or (date(2026, 7, 1) + timedelta(days=i * 2))
     due_date = doc_date + timedelta(days=30)
 
     quantity = round(random.uniform(1, 5), 2)
