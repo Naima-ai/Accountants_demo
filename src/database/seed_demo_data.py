@@ -19,11 +19,12 @@ Usage (from repo root):
     python src/data/download_real_samples.py         # once -- pulls real SROIE/CORD images (network)
     python src/database/seed_demo_data.py             # runs everything through the pipeline into the DB
 
-Needs Ollama running locally for full accuracy on non-XML documents
-(PDF/image/text classification+extraction fall back to the local SLM).
-Without it, those documents still get processed end-to-end but land in
-needs_review, same as any other low-confidence result -- the run
-itself won't fail.
+Needs the local SLM (src/llm/slm_client.py) available for full accuracy
+on non-XML documents (PDF/image/text classification+extraction fall
+back to it). Without it (e.g. llama-cpp-python or the model download
+isn't available), those documents still get processed end-to-end but
+land in needs_review, same as any other low-confidence result -- the
+run itself won't fail.
 """
 
 import glob

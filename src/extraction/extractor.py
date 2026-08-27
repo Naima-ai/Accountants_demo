@@ -10,7 +10,7 @@ Two-stage approach, mirroring classifier.py:
      document into structured_data (currently: FatturaPA XML), read the
      fields straight out of the dict. Free, exact, no model call.
   2. Local SLM fallback — for PDFs/images/receipts with only free text,
-     ask the local Ollama model to extract the same field set as JSON.
+     ask the local model to extract the same field set as JSON.
 
 Usage:
     from src.ingestion.ingestion import IngestionPipeline
@@ -38,7 +38,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__f
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+from src.llm.slm_client import call_llm, parse_json_object, SCHEMAS
 
 logger = logging.getLogger("extractor")
 logging.basicConfig(level=logging.INFO)
@@ -77,10 +77,6 @@ class ExtractedFields(BaseModel):
 
 class FieldExtractor:
     """Extracts ExtractedFields from a classifier_input dict + document type."""
-
-    def __init__(self, ollama_host: str = OLLAMA_HOST, ollama_model: str = OLLAMA_MODEL):
-        self.ollama_host = ollama_host
-        self.ollama_model = ollama_model
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -252,7 +248,7 @@ class FieldExtractor:
         text_excerpt = text[:3000]
 
         prompt = self._build_prompt(doc_type_str, text_excerpt)
-        raw = call_ollama(prompt, model=self.ollama_model, host=self.ollama_host, num_predict=800)
+        raw = call_llm(prompt, num_predict=800, schema=SCHEMAS["extraction"])
         parsed = parse_json_object(raw)
 
         line_items = [

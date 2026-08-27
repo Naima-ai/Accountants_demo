@@ -97,4 +97,4 @@ if __name__ == "__main__":
         save_samples("darentang/sroie", "real_sroie_receipt")
     save_samples("naver-clova-ix/cord-v2", "real_cord_receipt")
     print("\nDone. Run `python src/database/seed_demo_data.py` to process everything, "
-          "or use the /api/test routes in test_api.py to try one file at a time.")
+          "or POST to /api/demo-1/process in src/api/api.py to try one file at a time.")

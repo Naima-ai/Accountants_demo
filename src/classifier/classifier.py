@@ -9,13 +9,13 @@ Two-stage approach:
   1. Heuristic fast-path — free, instant, 100% reliable for structural
      cases (XML e-invoices, CSV ledgers/bank exports). No model call.
   2. Local SLM fallback — for PDFs/images/TXT where the type isn't
-     structurally obvious, ask a local Ollama model for a JSON verdict.
+     structurally obvious, ask the local model for a JSON verdict.
 
 Usage:
     from src.classifier.classifier import DocumentClassifier
-    from src.llm.ollama_client import warm_up
+    from src.llm.slm_client import warm_up
 
-    warm_up()  # once, before real work — see src/llm/ollama_client.py
+    warm_up()  # once, before real work — see src/llm/slm_client.py
     clf = DocumentClassifier()
     result = clf.classify(doc.to_classifier_input())
     # result.document_type, result.confidence, result.needs_review
@@ -36,7 +36,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__f
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+from src.llm.slm_client import call_llm, parse_json_object, SCHEMAS
 
 logger = logging.getLogger("classifier")
 logging.basicConfig(level=logging.INFO)
@@ -67,10 +67,6 @@ class ClassificationResult(BaseModel):
 
 class DocumentClassifier:
     """Classifies to_classifier_input() payloads into a DocumentType."""
-
-    def __init__(self, ollama_host: str = OLLAMA_HOST, ollama_model: str = OLLAMA_MODEL):
-        self.ollama_host = ollama_host
-        self.ollama_model = ollama_model
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -171,7 +167,7 @@ class DocumentClassifier:
         return None
 
     # ------------------------------------------------------------------
-    # Stage 2: local SLM via Ollama (shared client in ollama_client.py)
+    # Stage 2: local SLM (shared client in slm_client.py)
     # ------------------------------------------------------------------
 
     def _classify_with_model(self, ci: Dict[str, Any]):
@@ -179,7 +175,7 @@ class DocumentClassifier:
         text_excerpt = text[:3000]  # keep prompt small/fast on a local model
 
         prompt = self._build_prompt(text_excerpt)
-        raw = call_ollama(prompt, model=self.ollama_model, host=self.ollama_host, num_predict=150)
+        raw = call_llm(prompt, num_predict=150, schema=SCHEMAS["classification"])
         parsed = parse_json_object(raw)
 
         doc_type_str = parsed.get("document_type", "unknown")
@@ -224,11 +220,11 @@ JSON:"""
 
 # ----------------------------------------------------------------------
 # Quick manual test — exercises the heuristic path with no model call,
-# and (if Ollama is running locally) the model path on a fake PDF-derived
-# text. Run: python classifier.py
+# and the model path on a fake PDF-derived text (downloads/loads the
+# local SLM on first run). Run: python classifier.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    from src.llm.ollama_client import warm_up
+    from src.llm.slm_client import warm_up
 
     clf = DocumentClassifier()
 

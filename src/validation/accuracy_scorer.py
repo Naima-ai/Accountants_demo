@@ -9,23 +9,30 @@ accuracy percentage instead of anecdotal single-document impressions.
 Setup: SROIE dataset can be placed in data_set/sroie or pointed to via
 the SROIE_PATH environment variable.
 
-Run (from inside demo_1/ or wherever your modules live):
-    python accuracy_scorer.py
+Run (from the repo root):
+    python src/validation/accuracy_scorer.py
 """
 
 import os
 import random
 import re
+import sys
 import tempfile
 from datetime import datetime
 
 from datasets import load_from_disk, concatenate_datasets
 
-from ingestion import IngestionPipeline
-from classifier import DocumentClassifier
-from extractor import FieldExtractor
-from validator import Validator
-from ollama_client import warm_up
+# Makes `from src...` imports work whether this file is imported as part
+# of the package or run directly (python src/validation/accuracy_scorer.py).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from src.ingestion.ingestion import IngestionPipeline
+from src.classifier.classifier import DocumentClassifier
+from src.extraction.extractor import FieldExtractor
+from src.validation.validator import Validator
+from src.llm.slm_client import warm_up
 
 # Windows: pytesseract can't find tesseract.exe unless it's on PATH.
 if os.name == "nt":
@@ -35,8 +42,7 @@ if os.name == "nt":
         pytesseract.pytesseract.tesseract_cmd = tesseract_default
 
 # Dynamic path resolution: checks environment variable, then repo data_set/, then desktop fallback
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_DATASET_DIR = os.path.join(CURRENT_DIR, "..", "data_set", "sroie")
+DEFAULT_DATASET_DIR = os.path.join(_REPO_ROOT, "data_set", "sroie")
 DESKTOP_FALLBACK = os.path.expanduser(r"~\Desktop\sroie")
 LOCAL_SROIE_PATH = os.getenv("SROIE_PATH", DEFAULT_DATASET_DIR if os.path.exists(DEFAULT_DATASET_DIR) else DESKTOP_FALLBACK)
 
