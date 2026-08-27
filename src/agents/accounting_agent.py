@@ -4,6 +4,12 @@ accounting_agent.py
 Takes the output of extractor.py (ExtractedFields) and validator.py (ValidationResult) and produces an
 actual double-entry journal entry (Italian: scrittura in Dare/Avere)
 
+One journal line per EXTRACTED line item, exactly as extracted -- never
+grouped/summed by category and never relabeled with the supplier name,
+so what shows up in the journal is what was actually read off the
+document. account_code/account_name still come from validator.py's real
+chart-of-accounts categorization for that item.
+
 Line items that couldn't be categorized (validator.py returned no COA
 code) still get booked -- to a clearly-named placeholder account --
 rather than silently dropped, so the entry still balances and nothing
@@ -70,8 +76,14 @@ class AccountingAgent:
         lines: List[JournalLine] = []
         forced_review = False
 
-        # --- Debit side: one line per unique COA category actually used ---
-        category_totals = {}  # coa_code -> (coa_name, summed_amount)
+        # --- Debit side: one line per EXTRACTED line item, as extracted --
+        # Never grouped/summed by category and never re-labeled with the
+        # supplier name -- each line keeps its own real extracted
+        # description and amount, so the journal shows exactly what was
+        # read off the document, not a collapsed summary of it. The
+        # account_code/account_name are still the real GL account this
+        # item was categorized against (that's accounting metadata
+        # derived FROM the extraction, not a hardcoded stand-in for it).
         for line_item, categorization in zip(fields.line_items, validation.line_item_categorizations):
             amount = self._to_float(line_item.total)
             if amount is None:
@@ -86,13 +98,9 @@ class AccountingAgent:
                 code, name = UNCATEGORIZED_ACCOUNT["code"], UNCATEGORIZED_ACCOUNT["name"]
                 forced_review = True
 
-            existing_name, existing_amount = category_totals.get(code, (name, 0.0))
-            category_totals[code] = (existing_name, existing_amount + amount)
-
-        for code, (name, amount) in category_totals.items():
             lines.append(JournalLine(
                 account_code=code, account_name=name, debit=round(amount, 2),
-                description=fields.supplier_name,
+                description=line_item.description or fields.supplier_name,
             ))
 
         # --- Debit side: recoverable VAT, if present ---

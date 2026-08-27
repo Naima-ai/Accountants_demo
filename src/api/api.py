@@ -214,6 +214,46 @@ async def demo1_list_samples() -> Dict[str, List[str]]:
     return result
 
 
+@router.get("/demo-1/documents")
+async def demo1_list_documents(client_id: str) -> List[Dict[str, Any]]:
+    """Lists a client's already-processed documents -- for a UI picker
+    to browse/re-view existing documents alongside uploading new ones."""
+    return _memory.list_documents(client_id)
+
+
+@router.get("/demo-1/documents/{doc_id}", response_model=ProcessResponse)
+async def demo1_get_document(doc_id: str):
+    """Full stored detail for one already-processed document, shaped
+    exactly like POST /demo-1/process's response so the UI can reuse
+    the same before/after view for a re-viewed document as for a fresh
+    upload. Re-runs validator.py (fast, deterministic, no model call)
+    against the stored extracted fields so validation issues show up
+    too, instead of only what was persisted at ingestion time."""
+    detail = _memory.get_document_detail(doc_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Document not found: {doc_id}")
+
+    validation = None
+    if detail["extraction"]:
+        from src.extraction.extractor import ExtractedFields
+        fields = ExtractedFields(**detail["extraction"])
+        validation = _validator.validate(fields).model_dump()
+
+    return {
+        "doc_id": detail["doc_id"],
+        "status": detail["status"],
+        "file": detail["original_filename"],
+        "classification": {
+            "document_type": detail["classification"],
+            "confidence": detail["classification_confidence"],
+        },
+        "extraction": detail["extraction"],
+        "validation": validation,
+        "journal_entry": detail["journal_entry"],
+        "supplier_hint": None,
+    }
+
+
 @router.post("/demo-1/pipeline/{stage}")
 async def demo1_pipeline_stage(stage: str, file: UploadFile = File(...)) -> Dict[str, Any]:
     """Uploads one file and runs the chain up to (and including) `stage`

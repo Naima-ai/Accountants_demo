@@ -1,5 +1,8 @@
-import { useRef, useState } from "react";
-import { demo1IngestSamples, demo1Process, Demo1Result, SeedSamplesResponse } from "../api";
+import { useEffect, useRef, useState } from "react";
+import {
+  Client, demo1GetDocument, demo1IngestSamples, demo1ListDocuments, demo1Process,
+  Demo1Result, DocumentSummary, listClients, SeedSamplesResponse,
+} from "../api";
 
 function ConfidenceBadge({ value }: { value: number | undefined | null }) {
   if (value === undefined || value === null) return null;
@@ -34,6 +37,50 @@ export default function Demo1DocToData() {
   const [error, setError] = useState<string | null>(null);
   const [samplesRun, setSamplesRun] = useState<SeedSamplesResponse | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Browse existing documents already in the DB for a client, instead
+  // of only ever uploading new ones.
+  const [clients, setClients] = useState<Client[]>([]);
+  const [browseClientId, setBrowseClientId] = useState("");
+  const [clientDocs, setClientDocs] = useState<DocumentSummary[]>([]);
+  const [browseBusy, setBrowseBusy] = useState(false);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listClients()
+      .then((cs) => {
+        setClients(cs);
+        if (cs.length > 0) setBrowseClientId(cs[0].id);
+      })
+      .catch((e) => setBrowseError(String(e)));
+  }, []);
+
+  useEffect(() => {
+    if (!browseClientId) {
+      setClientDocs([]);
+      return;
+    }
+    demo1ListDocuments(browseClientId)
+      .then(setClientDocs)
+      .catch((e) => setBrowseError(String(e)));
+  }, [browseClientId]);
+
+  const viewExistingDoc = async (doc: DocumentSummary) => {
+    setBrowseBusy(true);
+    setBrowseError(null);
+    const index = queue.length;
+    setQueue((q) => [...q, { name: `${doc.original_filename} (existing)`, status: "pending" as const }]);
+    try {
+      const r = await demo1GetDocument(doc.doc_id);
+      setQueue((q) => q.map((item, idx) => (idx === index ? { ...item, status: "done", result: r } : item)));
+      setSelected(index);
+    } catch (e) {
+      setQueue((q) => q.map((item, idx) => (idx === index ? { ...item, status: "error", error: String(e) } : item)));
+      setBrowseError(String(e));
+    } finally {
+      setBrowseBusy(false);
+    }
+  };
 
   const runFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -118,6 +165,50 @@ export default function Demo1DocToData() {
       </div>
 
       {error && <p className="error-text" style={{ marginTop: 14 }}>{error}</p>}
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <h3>Browse existing documents</h3>
+        <p className="muted">Re-view a document already processed for a client, instead of uploading a new one.</p>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+          <label className="muted" htmlFor="browse-client">Client</label>
+          <select id="browse-client" value={browseClientId} onChange={(e) => setBrowseClientId(e.target.value)}>
+            {clients.length === 0 && <option value="">No clients yet</option>}
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
+            ))}
+          </select>
+        </div>
+        {browseError && <p className="error-text">{browseError}</p>}
+        {browseClientId && clientDocs.length === 0 && !browseError && (
+          <p className="muted">No documents processed yet for this client.</p>
+        )}
+        {clientDocs.length > 0 && (
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Classification</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientDocs.map((d) => (
+                <tr key={d.doc_id}>
+                  <td>{d.original_filename}</td>
+                  <td className="muted">{d.classification ?? "—"}</td>
+                  <td><StatusBadge status={d.status} /></td>
+                  <td>
+                    <button className="secondary" disabled={browseBusy} onClick={() => viewExistingDoc(d)}>
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {queue.length > 0 && (
         <div className="card" style={{ marginTop: 18 }}>

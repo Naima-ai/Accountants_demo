@@ -47,6 +47,25 @@ export function demo1Process(file: File, clientId = "c-001"): Promise<Demo1Resul
   });
 }
 
+export interface DocumentSummary {
+  doc_id: string;
+  original_filename: string;
+  file_type: string | null;
+  classification: string | null;
+  classification_confidence: number | null;
+  status: string;
+  needs_review: boolean;
+  ingested_at: string;
+}
+
+export function demo1ListDocuments(clientId: string): Promise<DocumentSummary[]> {
+  return request(`/api/demo-1/documents?client_id=${encodeURIComponent(clientId)}`);
+}
+
+export function demo1GetDocument(docId: string): Promise<Demo1Result> {
+  return request(`/api/demo-1/documents/${encodeURIComponent(docId)}`);
+}
+
 export interface SeedSamplesResponse {
   total: number;
   ready_to_post: number;
