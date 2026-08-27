@@ -229,6 +229,10 @@ pre {
   overflow: auto;
 }
 
+.row-selected {
+  background: rgba(79, 140, 255, 0.1);
+}
+
 .error-text {
   color: var(--err);
   font-size: 13px;
