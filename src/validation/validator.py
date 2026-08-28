@@ -10,8 +10,8 @@ Validates ExtractedFields (from extractor.py) two ways:
 
 Categorization is two-stage:
   1. Keyword heuristic — free, instant, matches the COA's keyword lists.
-  2. Local SLM fallback — for anything no keyword matches, ask Ollama to
-     pick from the allowed COA code list ONLY.
+  2. Local SLM fallback — for anything no keyword matches, ask the local
+     model to pick from the allowed COA code list ONLY.
 
 Usage:
     from src.validation.validator import Validator
@@ -36,7 +36,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__f
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+from src.llm.slm_client import call_llm, parse_json_object, SCHEMAS
 
 logger = logging.getLogger("validator")
 logging.basicConfig(level=logging.INFO)
@@ -80,14 +80,7 @@ class ValidationResult(BaseModel):
 
 
 class Validator:
-    def __init__(
-        self,
-        coa_path: str = DEFAULT_COA_PATH,
-        ollama_host: str = OLLAMA_HOST,
-        ollama_model: str = OLLAMA_MODEL,
-    ):
-        self.ollama_host = ollama_host
-        self.ollama_model = ollama_model
+    def __init__(self, coa_path: str = DEFAULT_COA_PATH):
         if not os.path.exists(coa_path):
             raise FileNotFoundError(f"Chart of Accounts not found at: {coa_path}")
 
@@ -384,7 +377,7 @@ If nothing fits well, use {{"code": "NONE", "confidence": 0.0}}.
 
 JSON:"""
 
-        raw = call_ollama(prompt, model=self.ollama_model, host=self.ollama_host, num_predict=100)
+        raw = call_llm(prompt, num_predict=100, schema=SCHEMAS["categorization"])
         parsed = parse_json_object(raw)
 
         code = parsed.get("code")

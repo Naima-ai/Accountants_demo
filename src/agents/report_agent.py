@@ -12,9 +12,9 @@ moment from the brief.
 Ratio math and anomaly detection are deterministic (no model call,
 mirrors validator.py's philosophy of keeping anything checkable out of
 the SLM's hands). Only the narrative write-up goes through the local
-model, via the shared src/llm/ollama_client.py -- and falls back to a
-template narrative if Ollama isn't reachable, so this agent (and its
-self-test) works with zero external services.
+model, via the shared src/llm/slm_client.py -- and falls back to a
+template narrative if the local model can't be loaded, so this agent
+(and its self-test) works with zero external services.
 
 Usage:
     from src.agents.report_agent import FinancialAnalysisAgent
@@ -43,11 +43,10 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 try:
-    from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama
-    _OLLAMA_AVAILABLE = True
+    from src.llm.slm_client import call_llm
+    _SLM_AVAILABLE = True
 except ImportError:
-    _OLLAMA_AVAILABLE = False
-    OLLAMA_HOST, OLLAMA_MODEL = "http://localhost:11434", "qwen2.5:7b-instruct"
+    _SLM_AVAILABLE = False
 
 from src.config import DEFAULT_BENCHMARKS, ANOMALY_MARGIN_DECLINE_PCT_POINTS, \
     ANOMALY_DSO_INCREASE_DAYS, ANOMALY_CASH_STRAIN_CURRENT_RATIO
@@ -110,10 +109,6 @@ class FinancialAnalysisAgent:
             "accounts_receivable": float,
         }
     """
-
-    def __init__(self, ollama_host: str = OLLAMA_HOST, ollama_model: str = OLLAMA_MODEL):
-        self.ollama_host = ollama_host
-        self.ollama_model = ollama_model
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -267,10 +262,10 @@ class FinancialAnalysisAgent:
         self, client_name: str, period: str, ratios: RatioSet,
         prior_ratios: Optional[RatioSet], anomalies: List[Anomaly],
     ) -> Tuple[str, str]:
-        if _OLLAMA_AVAILABLE:
+        if _SLM_AVAILABLE:
             try:
                 prompt = self._build_prompt(client_name, period, ratios, prior_ratios, anomalies)
-                raw = call_ollama(prompt, model=self.ollama_model, host=self.ollama_host, num_predict=500)
+                raw = call_llm(prompt, num_predict=500)
                 text = raw.strip()
                 if len(text) > 20:
                     return "model", text
@@ -386,7 +381,7 @@ def _wrap(line: str, width: int) -> List[str]:
 # ----------------------------------------------------------------------
 # Quick manual test: two synthetic periods showing declining margins,
 # worsening DSO, and cash strain -- should trip all three anomaly types
-# and produce a letter (template narrative if Ollama isn't running).
+# and produce a letter (template narrative if the local model can't load).
 # Run: python report_agent.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":

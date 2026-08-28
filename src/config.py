@@ -2,9 +2,7 @@
 config.py
 
 Single place for settings shared across the src/ stack (database, memory,
-orchestration, API) and, where relevant, kept name-compatible with the
-env vars demo_1/ollama_client.py already reads -- so setting OLLAMA_HOST
-once configures both demo_1 and the shared orchestration layer.
+orchestration, API, local SLM).
 """
 
 import os
@@ -37,12 +35,24 @@ REPORTS_DIR = VAR_DIR / "reports"
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{(VAR_DIR / 'accountants_demo.db').as_posix()}")
 
 # ----------------------------------------------------------------------
-# Local SLM (Ollama) -- same env var names as demo_1/ollama_client.py
+# Local SLM -- in-process llama.cpp (src/llm/slm_client.py), no daemon
 # ----------------------------------------------------------------------
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct")
-OLLAMA_TIMEOUT_S = int(os.getenv("OLLAMA_TIMEOUT_S", "420"))
+# Small, quantized, Italian-capable instruct model by default -- swap to
+# a bigger quant (e.g. Qwen2.5-3B-Instruct-GGUF) via env vars alone, no
+# code change, if more accuracy is wanted and resources allow.
+SLM_MODEL_REPO = os.getenv("SLM_MODEL_REPO", "Qwen/Qwen2.5-1.5B-Instruct-GGUF")
+SLM_MODEL_FILE = os.getenv("SLM_MODEL_FILE", "qwen2.5-1.5b-instruct-q4_k_m.gguf")
+
+# Downloaded once via huggingface_hub and cached here -- a one-time public
+# download, not an ongoing cloud dependency once the firm is running.
+SLM_MODELS_DIR = os.getenv("SLM_MODELS_DIR", str(VAR_DIR / "models"))
+
+SLM_N_CTX = int(os.getenv("SLM_N_CTX", "4096"))
+SLM_N_THREADS = int(os.getenv("SLM_N_THREADS", str(os.cpu_count() or 4)))
+# 0 = CPU only. Set to a layer count (or -1 for "all layers") to offload
+# to the on-prem NVIDIA GPU described in the demo brief -- config only.
+SLM_N_GPU_LAYERS = int(os.getenv("SLM_N_GPU_LAYERS", "0"))
 
 # ----------------------------------------------------------------------
 # Shared confidence / review thresholds
@@ -91,3 +101,4 @@ def ensure_dirs() -> None:
     """Create local var/ directories the app writes to, if missing."""
     VAR_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    Path(SLM_MODELS_DIR).mkdir(parents=True, exist_ok=True)

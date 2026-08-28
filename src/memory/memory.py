@@ -152,6 +152,77 @@ class MemoryStore:
                     description=line.get("description"),
                 ))
 
+    def list_documents(self, client_id: str) -> List[Dict[str, Any]]:
+        """Lightweight listing for a client's already-processed documents
+        -- for a UI picker, not the full extraction/journal detail
+        (see get_document_detail for that)."""
+        with session_scope() as s:
+            rows = (
+                s.query(Document)
+                .filter_by(client_id=client_id)
+                .order_by(Document.ingested_at.desc())
+                .all()
+            )
+            return [
+                {
+                    "doc_id": d.id, "original_filename": d.original_filename, "file_type": d.file_type,
+                    "classification": d.classification, "classification_confidence": d.classification_confidence,
+                    "status": d.status, "needs_review": d.needs_review, "ingested_at": d.ingested_at,
+                }
+                for d in rows
+            ]
+
+    def get_document_detail(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        """Full stored detail for one already-processed document: the
+        extracted fields, its journal entry (if any), and the reason it
+        was flagged for review (if any) -- everything the UI needs to
+        show the same before/after view as a fresh upload, without
+        re-running ingestion/classification/extraction."""
+        with session_scope() as s:
+            doc = s.get(Document, doc_id)
+            if doc is None:
+                return None
+
+            extracted_fields = json.loads(doc.extracted_fields_json) if doc.extracted_fields_json else None
+
+            journal_entry = s.query(JournalEntry).filter_by(doc_id=doc_id).one_or_none()
+            journal = None
+            if journal_entry is not None:
+                journal = {
+                    "entry_date": journal_entry.entry_date, "description": journal_entry.description,
+                    "status": journal_entry.status, "total_debit": journal_entry.total_debit,
+                    "total_credit": journal_entry.total_credit, "is_balanced": journal_entry.is_balanced,
+                    "lines": [
+                        {
+                            "account_code": l.account_code, "account_name": l.account_name,
+                            "debit": l.debit, "credit": l.credit, "description": l.description,
+                        }
+                        for l in journal_entry.lines
+                    ],
+                }
+
+            review_item = (
+                s.query(ReviewQueueItem)
+                .filter_by(ref_type="document", ref_id=doc_id)
+                .order_by(ReviewQueueItem.created_at.desc())
+                .first()
+            )
+
+            return {
+                "doc_id": doc.id,
+                "original_filename": doc.original_filename,
+                "source_path": doc.source_path,
+                "client_id": doc.client_id,
+                "file_type": doc.file_type,
+                "classification": doc.classification,
+                "classification_confidence": doc.classification_confidence,
+                "status": doc.status,
+                "needs_review": doc.needs_review,
+                "extraction": extracted_fields,
+                "journal_entry": journal,
+                "review_reason": review_item.reason if review_item else None,
+            }
+
     def learn_supplier(
         self, client_id: Optional[str], supplier_name: str,
         supplier_vat: Optional[str] = None, coa_code: Optional[str] = None,
@@ -352,6 +423,24 @@ class MemoryStore:
             if row is None:
                 return None
             return {"period": row.period, "data": json.loads(row.data_json)}
+
+    def list_financial_statements(
+        self, client_id: str, statement_type: str = "income_statement",
+    ) -> List[Dict[str, Any]]:
+        """Every stored statement for a client, oldest period first --
+        for the Advisory Report page's "load this client's 2-3 years"
+        view, distinct from get_prior_statement's single-row lookup."""
+        with session_scope() as s:
+            rows = (
+                s.query(FinancialStatement)
+                .filter_by(client_id=client_id, statement_type=statement_type)
+                .order_by(FinancialStatement.period.asc())
+                .all()
+            )
+            return [
+                {"period": r.period, "statement_type": r.statement_type, "data": json.loads(r.data_json)}
+                for r in rows
+            ]
 
     def store_report(
         self, client_id: str, period: str, ratios: Dict[str, Any],

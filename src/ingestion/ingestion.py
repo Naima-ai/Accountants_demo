@@ -29,6 +29,27 @@ from lxml import etree
 from PIL import Image
 import pytesseract
 
+# pip install pytesseract only installs the Python wrapper -- it still
+# needs the actual Tesseract OCR binary installed separately on the
+# machine. The UB-Mannheim Windows installer doesn't always add it to
+# PATH, and installs to a different folder depending on scope: machine-
+# wide (admin) goes to Program Files, `winget install` without admin
+# rights (the common case) goes under the current user's AppData
+# instead. Auto-detect both so OCR works with no PATH editing either
+# way. Override with TESSERACT_CMD if it's installed somewhere else.
+_tesseract_cmd = os.getenv("TESSERACT_CMD")
+if _tesseract_cmd:
+    pytesseract.pytesseract.tesseract_cmd = _tesseract_cmd
+elif os.name == "nt":
+    _candidate_windows_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"),
+    ]
+    for _candidate in _candidate_windows_paths:
+        if os.path.exists(_candidate):
+            pytesseract.pytesseract.tesseract_cmd = _candidate
+            break
+
 from src.ingestion.schemas import (
     IngestedDocument, PageContent, TableData,
     SourceFileType, ExtractionMethod,

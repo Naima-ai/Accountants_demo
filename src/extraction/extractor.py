@@ -10,7 +10,7 @@ Two-stage approach, mirroring classifier.py:
      document into structured_data (currently: FatturaPA XML), read the
      fields straight out of the dict. Free, exact, no model call.
   2. Local SLM fallback — for PDFs/images/receipts with only free text,
-     ask the local Ollama model to extract the same field set as JSON.
+     ask the local model to extract the same field set as JSON.
 
 Usage:
     from src.ingestion.ingestion import IngestionPipeline
@@ -38,7 +38,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__f
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from src.llm.ollama_client import OLLAMA_HOST, OLLAMA_MODEL, call_ollama, parse_json_object
+from src.llm.slm_client import call_llm, parse_json_object, SCHEMAS
 
 logger = logging.getLogger("extractor")
 logging.basicConfig(level=logging.INFO)
@@ -77,10 +77,6 @@ class ExtractedFields(BaseModel):
 
 class FieldExtractor:
     """Extracts ExtractedFields from a classifier_input dict + document type."""
-
-    def __init__(self, ollama_host: str = OLLAMA_HOST, ollama_model: str = OLLAMA_MODEL):
-        self.ollama_host = ollama_host
-        self.ollama_model = ollama_model
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -243,6 +239,34 @@ class FieldExtractor:
             return None
         return value
 
+    # OCR (via Tesseract, on scanned/photographed documents) commonly
+    # confuses a printed "IT" VAT-prefix with visually similar digits --
+    # "1T00834710156" instead of "IT00834710156" is the single most
+    # common case (capital I misread as digit 1). Only correct the
+    # 2-character country-code prefix, and only when doing so yields
+    # exactly "IT" against an otherwise well-formed 11-digit number --
+    # never touch the digits themselves, since a real misread there
+    # isn't something a heuristic can safely undo (that stays a job for
+    # validator.py's review-queue flag).
+    _VAT_PREFIX_OCR_CONFUSABLES = {"1": "I", "L": "I", "0": "O", "5": "S", "8": "B", "2": "Z"}
+    _VAT_SHAPE_RE = re.compile(r"^(.{2})(\d{11})$")
+
+    def _fix_vat_ocr_confusion(self, vat: Optional[str]) -> Optional[str]:
+        if not vat:
+            return vat
+        s = vat.strip().upper().replace(" ", "")
+        match = self._VAT_SHAPE_RE.match(s)
+        if not match:
+            return vat
+        prefix, digits = match.groups()
+        if prefix == "IT":
+            return f"IT{digits}"
+        fixed_prefix = "".join(self._VAT_PREFIX_OCR_CONFUSABLES.get(ch, ch) for ch in prefix)
+        if fixed_prefix == "IT":
+            logger.info(f"Corrected likely OCR misread in VAT prefix: {vat!r} -> IT{digits}")
+            return f"IT{digits}"
+        return vat
+
     # ------------------------------------------------------------------
     # Path 2: local SLM extraction (PDFs, images, receipts, other)
     # ------------------------------------------------------------------
@@ -252,7 +276,7 @@ class FieldExtractor:
         text_excerpt = text[:3000]
 
         prompt = self._build_prompt(doc_type_str, text_excerpt)
-        raw = call_ollama(prompt, model=self.ollama_model, host=self.ollama_host, num_predict=800)
+        raw = call_llm(prompt, num_predict=800, schema=SCHEMAS["extraction"])
         parsed = parse_json_object(raw)
 
         line_items = [
@@ -274,7 +298,7 @@ class FieldExtractor:
             doc_id=doc_id,
             document_type=doc_type_str,
             supplier_name=self._sanitize_value(parsed.get("supplier_name")),
-            supplier_vat=self._sanitize_value(parsed.get("supplier_vat")),
+            supplier_vat=self._sanitize_value(self._fix_vat_ocr_confusion(parsed.get("supplier_vat"))),
             customer_name=self._sanitize_value(parsed.get("customer_name")),
             document_number=parsed.get("document_number"),
             document_date=parsed.get("document_date"),
