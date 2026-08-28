@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Client, demo1GetDocument, demo1IngestSamples, demo1ListDocuments, demo1Process,
-  Demo1Result, DocumentSummary, listClients, SeedSamplesResponse,
+  Client, demo1GetDocument, demo1ListDocuments, demo1RunDocument, demo1UploadDocument,
+  Demo1Result, DocumentSummary, listClients,
 } from "../api";
 
 function ConfidenceBadge({ value }: { value: number | undefined | null }) {
@@ -11,95 +11,88 @@ function ConfidenceBadge({ value }: { value: number | undefined | null }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const cls = status === "accounted" ? "ok" : status === "needs_review" ? "warn" : "err";
+  const cls = status === "accounted" ? "ok" : status === "needs_review" ? "warn" : status === "uploaded" ? "neutral" : "err";
   return <span className={`badge ${cls}`}>{status}</span>;
 }
 
-interface QueueItem {
-  name: string;
-  status: "pending" | "done" | "error";
-  result?: Demo1Result;
-  error?: string;
-}
-
-// The Demo 1 "wow": drop a chaotic pile of documents in, get validated,
-// bookable journal entries out in seconds -- the before/after panel
-// shows every pipeline stage the brief calls out (classify -> extract
-// -> validate -> journal entry). Uploads run one at a time server-side
-// (the local SLM serves one generate() call at a time), but the UI
-// accepts any number of files at once via the Upload button, drag-drop,
-// or "run all samples".
+// The Demo 1 "wow": select a client, see the chaotic pile of documents
+// already on file for them (or upload a new one), pick one, and watch
+// the pipeline run stage by stage -- classify -> extract -> validate
+// -> journal entry. Nothing is processed until explicitly Run: uploaded
+// and pre-seeded documents are indistinguishable in this table, both
+// sit as "uploaded" until picked.
 export default function Demo1DocToData() {
-  const [dragging, setDragging] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [samplesRun, setSamplesRun] = useState<SeedSamplesResponse | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  // Browse existing documents already in the DB for a client, instead
-  // of only ever uploading new ones.
   const [clients, setClients] = useState<Client[]>([]);
-  const [browseClientId, setBrowseClientId] = useState("");
-  const [clientDocs, setClientDocs] = useState<DocumentSummary[]>([]);
-  const [browseBusy, setBrowseBusy] = useState(false);
-  const [browseError, setBrowseError] = useState<string | null>(null);
+  const [clientId, setClientId] = useState("");
+  const [docs, setDocs] = useState<DocumentSummary[]>([]);
+  const [docsError, setDocsError] = useState<string | null>(null);
+  const [runningDocId, setRunningDocId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [result, setResult] = useState<Demo1Result | null>(null);
+  const [resultDocName, setResultDocName] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     listClients()
       .then((cs) => {
         setClients(cs);
-        if (cs.length > 0) setBrowseClientId(cs[0].id);
+        if (cs.length > 0) setClientId(cs[0].id);
       })
-      .catch((e) => setBrowseError(String(e)));
+      .catch((e) => setDocsError(String(e)));
   }, []);
 
-  useEffect(() => {
-    if (!browseClientId) {
-      setClientDocs([]);
+  const reloadDocs = (id: string) => {
+    if (!id) {
+      setDocs([]);
       return;
     }
-    demo1ListDocuments(browseClientId)
-      .then(setClientDocs)
-      .catch((e) => setBrowseError(String(e)));
-  }, [browseClientId]);
+    demo1ListDocuments(id)
+      .then(setDocs)
+      .catch((e) => setDocsError(String(e)));
+  };
 
-  const viewExistingDoc = async (doc: DocumentSummary) => {
-    setBrowseBusy(true);
-    setBrowseError(null);
-    const index = queue.length;
-    setQueue((q) => [...q, { name: `${doc.original_filename} (existing)`, status: "pending" as const }]);
+  useEffect(() => {
+    reloadDocs(clientId);
+  }, [clientId]);
+
+  const runDoc = async (doc: DocumentSummary) => {
+    setRunningDocId(doc.doc_id);
+    setError(null);
     try {
-      const r = await demo1GetDocument(doc.doc_id);
-      setQueue((q) => q.map((item, idx) => (idx === index ? { ...item, status: "done", result: r } : item)));
-      setSelected(index);
+      const r = await demo1RunDocument(doc.doc_id);
+      setResult(r);
+      setResultDocName(doc.original_filename);
+      reloadDocs(clientId);
     } catch (e) {
-      setQueue((q) => q.map((item, idx) => (idx === index ? { ...item, status: "error", error: String(e) } : item)));
-      setBrowseError(String(e));
+      setError(String(e));
     } finally {
-      setBrowseBusy(false);
+      setRunningDocId(null);
     }
   };
 
-  const runFiles = async (files: File[]) => {
-    if (files.length === 0) return;
-    setBusy(true);
+  const viewDoc = async (doc: DocumentSummary) => {
     setError(null);
-    const startIndex = queue.length;
-    setQueue((q) => [...q, ...files.map((f) => ({ name: f.name, status: "pending" as const }))]);
-
-    for (let i = 0; i < files.length; i++) {
-      const index = startIndex + i;
-      try {
-        const r = await demo1Process(files[i]);
-        setQueue((q) => q.map((item, idx) => (idx === index ? { ...item, status: "done", result: r } : item)));
-      } catch (e) {
-        setQueue((q) => q.map((item, idx) => (idx === index ? { ...item, status: "error", error: String(e) } : item)));
-      }
-      setSelected(index);
+    try {
+      const r = await demo1GetDocument(doc.doc_id);
+      setResult(r);
+      setResultDocName(doc.original_filename);
+    } catch (e) {
+      setError(String(e));
     }
-    setBusy(false);
+  };
+
+  const uploadFiles = async (files: File[]) => {
+    if (files.length === 0 || !clientId) return;
+    setError(null);
+    for (const file of files) {
+      try {
+        const summary = await demo1UploadDocument(file, clientId);
+        setDocs((d) => [summary, ...d]);
+      } catch (e) {
+        setError(String(e));
+      }
+    }
   };
 
   const onUploadClick = () => fileInput.current?.click();
@@ -107,30 +100,15 @@ export default function Demo1DocToData() {
   const onFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // allow re-picking the same file(s) later
-    runFiles(files);
-  };
-
-  const runAllSamples = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await demo1IngestSamples();
-      setSamplesRun(r);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
+    uploadFiles(files);
   };
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    runFiles(Array.from(e.dataTransfer.files ?? []));
+    uploadFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
-  const current = selected !== null ? queue[selected] : undefined;
-  const result = current?.result;
   const extraction = (result?.extraction ?? {}) as Record<string, any>;
   const classification = (result?.classification ?? {}) as Record<string, any>;
   const validation = (result?.validation ?? {}) as Record<string, any>;
@@ -139,10 +117,23 @@ export default function Demo1DocToData() {
   return (
     <div>
       <h2>01 · Sovereign Doc-to-Data</h2>
-      <p className="muted">Drop an invoice, receipt, or e-invoice — analog and foreign chaos in, bookkeeping-ready entries out.</p>
+      <p className="muted">Select a client, pick one of their documents (or upload a new one), and run the pipeline: classify → extract → validate → bookkeep.</p>
+
+      <div className="card">
+        <h3>Client</h3>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <select value={clientId} onChange={(e) => setClientId(e.target.value)}>
+            {clients.length === 0 && <option value="">No clients yet</option>}
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div
         className={`dropzone ${dragging ? "dragging" : ""}`}
+        style={{ marginTop: 14 }}
         onDragOver={(e) => {
           e.preventDefault();
           setDragging(true);
@@ -151,57 +142,50 @@ export default function Demo1DocToData() {
         onDrop={onDrop}
         onClick={onUploadClick}
       >
-        {busy ? "Processing…" : "Drop files here, or click to choose"}
-        <input ref={fileInput} type="file" multiple hidden onChange={onFilePicked} />
+        {clientId ? "Drop files here, or click to choose" : "Select a client first"}
+        <input ref={fileInput} type="file" multiple hidden onChange={onFilePicked} disabled={!clientId} />
       </div>
 
-      <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-        <button onClick={onUploadClick} disabled={busy}>
+      <div style={{ marginTop: 14 }}>
+        <button onClick={onUploadClick} disabled={!clientId}>
           Upload files
-        </button>
-        <button className="secondary" onClick={runAllSamples} disabled={busy}>
-          Run all data_set/samples/ files
         </button>
       </div>
 
       {error && <p className="error-text" style={{ marginTop: 14 }}>{error}</p>}
+      {docsError && <p className="error-text" style={{ marginTop: 14 }}>{docsError}</p>}
 
       <div className="card" style={{ marginTop: 18 }}>
-        <h3>Browse existing documents</h3>
-        <p className="muted">Re-view a document already processed for a client, instead of uploading a new one.</p>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
-          <label className="muted" htmlFor="browse-client">Client</label>
-          <select id="browse-client" value={browseClientId} onChange={(e) => setBrowseClientId(e.target.value)}>
-            {clients.length === 0 && <option value="">No clients yet</option>}
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
-            ))}
-          </select>
-        </div>
-        {browseError && <p className="error-text">{browseError}</p>}
-        {browseClientId && clientDocs.length === 0 && !browseError && (
-          <p className="muted">No documents processed yet for this client.</p>
-        )}
-        {clientDocs.length > 0 && (
+        <h3>Documents ({docs.length})</h3>
+        {clientId && docs.length === 0 && !docsError && <p className="muted">No documents for this client yet.</p>}
+        {docs.length > 0 && (
           <table>
             <thead>
               <tr>
                 <th>File</th>
+                <th>Type</th>
                 <th>Classification</th>
                 <th>Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {clientDocs.map((d) => (
+              {docs.map((d) => (
                 <tr key={d.doc_id}>
                   <td>{d.original_filename}</td>
+                  <td className="muted">{d.file_type ?? "—"}</td>
                   <td className="muted">{d.classification ?? "—"}</td>
                   <td><StatusBadge status={d.status} /></td>
                   <td>
-                    <button className="secondary" disabled={browseBusy} onClick={() => viewExistingDoc(d)}>
-                      View
-                    </button>
+                    {d.status === "uploaded" ? (
+                      <button disabled={runningDocId === d.doc_id} onClick={() => runDoc(d)}>
+                        {runningDocId === d.doc_id ? "Running…" : "Run"}
+                      </button>
+                    ) : (
+                      <button className="secondary" onClick={() => viewDoc(d)}>
+                        View
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -210,75 +194,10 @@ export default function Demo1DocToData() {
         )}
       </div>
 
-      {queue.length > 0 && (
-        <div className="card" style={{ marginTop: 18 }}>
-          <h3>Uploaded files ({queue.length})</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.map((item, i) => (
-                <tr
-                  key={i}
-                  className={i === selected ? "row-selected" : undefined}
-                  style={{ cursor: item.status === "done" ? "pointer" : "default" }}
-                  onClick={() => item.status === "done" && setSelected(i)}
-                >
-                  <td>{item.name}</td>
-                  <td>
-                    {item.status === "pending" && <span className="badge warn">processing…</span>}
-                    {item.status === "done" && <StatusBadge status={item.result?.status ?? "—"} />}
-                    {item.status === "error" && <span className="badge err">error</span>}
-                  </td>
-                  <td className="muted">{item.status === "error" ? item.error : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {samplesRun && (
-        <div className="card" style={{ marginTop: 18 }}>
-          <h3>Bulk sample run</h3>
-          <p>
-            {samplesRun.total} documents — {samplesRun.ready_to_post} ready to post, {samplesRun.needs_review} need
-            review, {samplesRun.errors} errors.
-          </p>
-          <table>
-            <thead>
-              <tr>
-                <th>Group</th>
-                <th>Total</th>
-                <th>Ready</th>
-                <th>Needs review</th>
-                <th>Errors</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(samplesRun.by_group).map(([group, stats]) => (
-                <tr key={group}>
-                  <td>{group}</td>
-                  <td>{stats.total}</td>
-                  <td>{stats.ready_to_post}</td>
-                  <td>{stats.needs_review}</td>
-                  <td>{stats.errors}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
       {result && (
         <div style={{ marginTop: 18 }}>
           <div className="card">
-            <h3>Result — {current?.name}</h3>
+            <h3>Result — {resultDocName}</h3>
             <p>
               <StatusBadge status={result.status} /> &nbsp; doc_id: {result.doc_id}
             </p>

@@ -38,15 +38,6 @@ export interface Demo1Result {
   error?: string;
 }
 
-export function demo1Process(file: File, clientId = "c-001"): Promise<Demo1Result> {
-  const form = new FormData();
-  form.append("file", file);
-  return request(`/api/demo-1/process?client_id=${encodeURIComponent(clientId)}`, {
-    method: "POST",
-    body: form,
-  });
-}
-
 export interface DocumentSummary {
   doc_id: string;
   original_filename: string;
@@ -55,7 +46,19 @@ export interface DocumentSummary {
   classification_confidence: number | null;
   status: string;
   needs_review: boolean;
-  ingested_at: string;
+  ingested_at?: string;
+}
+
+// Uploads/registers a document for a client -- NOT processed yet
+// (status "uploaded"). Run it via demo1RunDocument, same as any
+// pre-seeded document.
+export function demo1UploadDocument(file: File, clientId: string): Promise<DocumentSummary> {
+  const form = new FormData();
+  form.append("file", file);
+  return request(`/api/demo-1/documents?client_id=${encodeURIComponent(clientId)}`, {
+    method: "POST",
+    body: form,
+  });
 }
 
 export function demo1ListDocuments(clientId: string): Promise<DocumentSummary[]> {
@@ -66,16 +69,11 @@ export function demo1GetDocument(docId: string): Promise<Demo1Result> {
   return request(`/api/demo-1/documents/${encodeURIComponent(docId)}`);
 }
 
-export interface SeedSamplesResponse {
-  total: number;
-  ready_to_post: number;
-  needs_review: number;
-  errors: number;
-  by_group: Record<string, { total: number; ready_to_post: number; needs_review: number; errors: number }>;
-}
-
-export function demo1IngestSamples(clientId = "c-001"): Promise<SeedSamplesResponse> {
-  return request(`/api/demo-1/ingest-samples?client_id=${encodeURIComponent(clientId)}`, { method: "POST" });
+// Runs the full Demo 1 chain (classify -> extract -> validate ->
+// bookkeep) on an already-registered document -- pre-seeded or
+// uploaded, same action either way.
+export function demo1RunDocument(docId: string): Promise<Demo1Result> {
+  return request(`/api/demo-1/documents/${encodeURIComponent(docId)}/run`, { method: "POST" });
 }
 
 // ---- Demo 2 -- Reminder Agent ------------------------------------------
@@ -171,6 +169,30 @@ export function demo3Generate(clientId: string, period: string, statement: State
   return request(`/api/demo-3/generate`, {
     method: "POST",
     body: JSON.stringify({ client_id: clientId, period, statement }),
+  });
+}
+
+export interface StoredStatement {
+  period: string;
+  statement_type: string;
+  data: StatementInput;
+}
+
+// Existing Client mode: raw stored figures for a client, no report --
+// for the "load their 2-3 years" trend view.
+export function demo3ListStatements(clientId: string): Promise<StoredStatement[]> {
+  return request(`/api/demo-3/statements/${encodeURIComponent(clientId)}`);
+}
+
+// Upload Statements mode: a CSV (one row per fiscal year, a `period`
+// column plus any StatementInput field as columns) -> one generated
+// report per row, in order.
+export function demo3UploadStatement(file: File, clientId: string): Promise<GenerateReportResponse[]> {
+  const form = new FormData();
+  form.append("file", file);
+  return request(`/api/demo-3/upload-statement?client_id=${encodeURIComponent(clientId)}`, {
+    method: "POST",
+    body: form,
   });
 }
 

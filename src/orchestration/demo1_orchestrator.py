@@ -51,14 +51,22 @@ class Demo1Orchestrator:
         self.accounting_agent = AccountingAgent()
         self.memory = memory or MemoryStore()
 
-    def process_file(self, file_path: str, client_id: Optional[str] = None) -> Dict[str, Any]:
+    def process_file(self, file_path: str, client_id: Optional[str] = None, doc_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Runs one document through the entire Demo 1 chain and persists
         the result. Never raises for a single bad document -- a failure
         at any stage comes back as needs_review=True with the reason in
         `notes`/`error`, so process_folder() can keep going.
+
+        `doc_id`: if the file is already registered in the DB (e.g. a
+        document generated/uploaded earlier and now being "Run" from
+        the UI), pass its existing id so this updates that same row
+        instead of creating a duplicate -- every persistence call below
+        keys off doc.doc_id, so overwriting it here is enough.
         """
         doc = self.pipeline.ingest_file(file_path)
+        if doc_id is not None:
+            doc.doc_id = doc_id
 
         if not doc.success:
             self.memory.record_document(

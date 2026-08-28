@@ -11,11 +11,17 @@ play via API" principle (src/main.py mounts this one router).
 
 Routes:
     Demo 1 -- Sovereign Doc-to-Data (Demo1Orchestrator)
-        POST /api/demo-1/process          -- upload one file, run the full chain
-        POST /api/demo-1/ingest-samples   -- run every file under data_set/samples/
-        POST /api/demo-1/pipeline/{stage} -- upload one file, run up to one stage
-                                              (stage: ingestion|classify|extract|validate)
-        GET  /api/demo-1/samples          -- lists data_set/samples/ contents
+        POST /api/demo-1/documents            -- upload/register a document for a client
+                                                  (NOT processed -- status="uploaded")
+        POST /api/demo-1/documents/{doc_id}/run -- run the full chain on an already-registered
+                                                  document (pre-seeded or previously uploaded),
+                                                  updating that same row
+        GET  /api/demo-1/documents?client_id= -- list a client's documents (any status)
+        GET  /api/demo-1/documents/{doc_id}   -- full stored detail for one document
+        POST /api/demo-1/ingest-samples       -- run every file under data_set/samples/ (dev/test)
+        POST /api/demo-1/pipeline/{stage}     -- upload one file, run up to one stage
+                                                  (stage: ingestion|classify|extract|validate)
+        GET  /api/demo-1/samples              -- lists data_set/samples/ contents
 
     Demo 2 -- Reminder Agent & Document Collection (ReminderOrchestrator)
         POST /api/demo-2/seed             -- seed a client's expected-document checklist
@@ -25,6 +31,8 @@ Routes:
     Demo 3 -- Advisory Report + Alerts (ReportOrchestrator)
         POST /api/demo-3/generate         -- generate (and persist) an advisory report
         GET  /api/demo-3/reports/{client_id} -- every previously generated report
+        GET  /api/demo-3/statements/{client_id} -- raw stored statement figures (no report), oldest first
+        POST /api/demo-3/upload-statement -- CSV upload -> generate report(s), one per row
 
     Shared
         GET  /api/clients, POST /api/clients
@@ -39,7 +47,10 @@ import shutil
 import tempfile
 import time
 import threading
+import uuid
 from typing import Any, Dict, List, Optional
+
+import pandas as pd
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -139,20 +150,55 @@ class SeedSamplesResponse(BaseModel):
     by_group: Dict[str, Dict[str, int]]
 
 
-@router.post("/demo-1/process", response_model=ProcessResponse)
-async def demo1_process(file: UploadFile = File(...), client_id: str = "c-001"):
-    """Uploads one document and runs the full Demo 1 chain (ingest ->
-    classify -> extract -> validate -> learn -> bookkeep) via
-    Demo1Orchestrator -- the "drop a chaotic folder in, get clean
-    entries out" wow moment from the brief, for a single file."""
+_EXT_TO_FILE_TYPE = {
+    ".xml": "xml", ".pdf": "pdf_text", ".txt": "txt", ".csv": "csv",
+    ".png": "image", ".jpg": "image", ".jpeg": "image", ".tiff": "image", ".bmp": "image",
+}
+
+
+@router.post("/demo-1/documents")
+async def demo1_upload_document(file: UploadFile = File(...), client_id: str = "r-001") -> Dict[str, Any]:
+    """Uploads a document and registers it for a client -- status is
+    "uploaded", nothing is classified/extracted/validated/booked yet.
+    From here an uploaded document is indistinguishable from a
+    pre-seeded one: both show up in GET /demo-1/documents?client_id=
+    and both run via POST /demo-1/documents/{doc_id}/run."""
     path = await _save_upload(file)
+    doc_id = str(uuid.uuid4())
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    file_type = _EXT_TO_FILE_TYPE.get(ext, "unknown")
+
+    _memory.record_document(
+        doc_id=doc_id, original_filename=file.filename or os.path.basename(path),
+        source_path=path, client_id=client_id, file_type=file_type, status="uploaded",
+    )
+    return {
+        "doc_id": doc_id, "original_filename": file.filename, "file_type": file_type,
+        "classification": None, "classification_confidence": None,
+        "status": "uploaded", "needs_review": False,
+    }
+
+
+@router.post("/demo-1/documents/{doc_id}/run", response_model=ProcessResponse)
+async def demo1_run_document(doc_id: str):
+    """Runs the full Demo 1 chain (ingest -> classify -> extract ->
+    validate -> learn -> bookkeep) on an already-registered document --
+    pre-seeded by generate_client_roster.py or previously uploaded via
+    POST /demo-1/documents -- updating that same row rather than
+    creating a new one. This is the explicit "Run" action the UI calls
+    after a user selects a document from a client's list."""
+    detail = _memory.get_document_detail(doc_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Document not found: {doc_id}")
+    if not os.path.exists(detail["source_path"]):
+        raise HTTPException(status_code=404, detail=f"Source file missing on disk: {detail['source_path']}")
+
     started = time.time()
     try:
-        result = _demo1.process_file(path, client_id=client_id)
+        result = _demo1.process_file(detail["source_path"], client_id=detail["client_id"], doc_id=doc_id)
         return result
     finally:
         _record_latency("demo-1-process", started)
-        os.remove(path)
 
 
 @router.post("/demo-1/ingest-samples", response_model=SeedSamplesResponse)
@@ -418,6 +464,50 @@ async def demo3_generate_report(request: GenerateReportRequest):
 async def demo3_list_reports(client_id: str) -> List[Dict[str, Any]]:
     """Every previously generated report for a client, most recent first."""
     return _demo3.memory.get_reports(client_id)
+
+
+@router.get("/demo-3/statements/{client_id}")
+async def demo3_list_statements(client_id: str) -> List[Dict[str, Any]]:
+    """Every stored RAW financial-statement figure set for a client,
+    oldest period first -- Advisory Report page's "Existing Client"
+    mode uses this to show the 2-3 years available before generating a
+    report from them."""
+    return _memory.list_financial_statements(client_id)
+
+
+@router.post("/demo-3/upload-statement")
+async def demo3_upload_statement(file: UploadFile = File(...), client_id: str = "r-001") -> List[Dict[str, Any]]:
+    """Advisory Report page's "Upload Statements" mode (Option B): a CSV
+    with one row per fiscal year -- a `period` column plus any of
+    StatementInput's fields as columns -- generates an advisory report
+    for each row in order via the same ReportOrchestrator.generate_report
+    every other path uses, so a multi-year upload gets the same
+    prior-period comparison Existing Client mode gets."""
+    path = await _save_upload(file)
+    try:
+        df = pd.read_csv(path)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Could not parse CSV: {e}")
+    finally:
+        os.remove(path)
+
+    if "period" not in df.columns:
+        raise HTTPException(status_code=422, detail="CSV must include a 'period' column (e.g. 2024, 2025, 2026).")
+
+    statement_fields = set(StatementInput.model_fields.keys())
+    results = []
+    for _, row in df.iterrows():
+        period = str(row["period"])
+        statement = {
+            field: float(row[field])
+            for field in statement_fields
+            if field in df.columns and pd.notna(row[field])
+        }
+        try:
+            results.append(_demo3.generate_report(client_id=client_id, period=period, statement=statement))
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+    return results
 
 
 # ========================================================================

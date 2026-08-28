@@ -211,6 +211,7 @@ class MemoryStore:
             return {
                 "doc_id": doc.id,
                 "original_filename": doc.original_filename,
+                "source_path": doc.source_path,
                 "client_id": doc.client_id,
                 "file_type": doc.file_type,
                 "classification": doc.classification,
@@ -422,6 +423,24 @@ class MemoryStore:
             if row is None:
                 return None
             return {"period": row.period, "data": json.loads(row.data_json)}
+
+    def list_financial_statements(
+        self, client_id: str, statement_type: str = "income_statement",
+    ) -> List[Dict[str, Any]]:
+        """Every stored statement for a client, oldest period first --
+        for the Advisory Report page's "load this client's 2-3 years"
+        view, distinct from get_prior_statement's single-row lookup."""
+        with session_scope() as s:
+            rows = (
+                s.query(FinancialStatement)
+                .filter_by(client_id=client_id, statement_type=statement_type)
+                .order_by(FinancialStatement.period.asc())
+                .all()
+            )
+            return [
+                {"period": r.period, "statement_type": r.statement_type, "data": json.loads(r.data_json)}
+                for r in rows
+            ]
 
     def store_report(
         self, client_id: str, period: str, ratios: Dict[str, Any],
