@@ -1,69 +1,116 @@
 {
-  "_source_note": "Top-level structure (stato_patrimoniale_attivo/passivo, conto_economico) is the real Italian Civil Code statutory structure (Art. 2424/2425), matching chart_of_accounts_reference.json. The 'categories' arrays nested under conto_economico are a synthetic granular layer built for this demo, using common Italian bookkeeping account groupings (consistent with CNDCEC/OIC practice) so line items from real invoices have something concrete to be checked against. Not an official downloadable file -- none exists -- but a reasonable, defensible synthetic layer as instructed in the idea-map doc.",
+  "_source_note": "Piano dei Conti standard CNDCEC / Codice Civile (Art. 2424/2425) - expanded for 50 diverse Italian client profiles.",
 
   "stato_patrimoniale_attivo": [
-    {"code": "A", "name": "Crediti verso soci per versamenti ancora dovuti"},
-    {"code": "B", "name": "Immobilizzazioni (Fixed Assets)", "subcategories": ["Immateriali", "Materiali", "Finanziarie"],
+    {
+      "code": "A",
+      "name": "Crediti verso soci per versamenti ancora dovuti"
+    },
+    {
+      "code": "B",
+      "name": "Immobilizzazioni (Fixed Assets)",
+      "subcategories": ["Immateriali", "Materiali", "Finanziarie"],
       "categories": [
-        {"code": "B-II-01", "name": "Impianti e macchinari", "keywords": ["macchinario", "impianto", "attrezzatura industriale"]},
-        {"code": "B-II-02", "name": "Attrezzature e arredi", "keywords": ["arredo", "mobili ufficio", "attrezzatura", "scrivania"]},
-        {"code": "B-II-03", "name": "Hardware e dispositivi elettronici", "keywords": ["computer", "laptop", "server", "notebook", "monitor", "stampante"]},
-        {"code": "B-I-01", "name": "Software e licenze", "keywords": ["licenza software", "abbonamento software", "saas"]}
-      ]},
-    {"code": "C", "name": "Attivo circolante (Current Assets)", "subcategories": ["Rimanenze", "Crediti", "Attivita finanziarie", "Disponibilita liquide"]},
-    {"code": "D", "name": "Ratei e risconti attivi"}
+        {"code": "B-I-01", "name": "Software, brevetti, licenze e sviluppo", "keywords": ["licenza software", "abbonamento software", "saas", "sviluppo software", "brevetto", "marchio"]},
+        {"code": "B-II-01", "name": "Impianti e macchinari", "keywords": ["macchinario", "impianto", "attrezzatura industriale", "linea produzione"]},
+        {"code": "B-II-02", "name": "Attrezzature e arredi per ufficio", "keywords": ["arredo", "mobili ufficio", "attrezzatura", "scrivania", "sedia ergonomica", "armadio archivio"]},
+        {"code": "B-II-03", "name": "Hardware, server e dispositivi elettronici", "keywords": ["computer", "laptop", "server", "notebook", "monitor", "stampante", "switch", "router", "firewall"]}
+      ]
+    },
+    {
+      "code": "C",
+      "name": "Attivo circolante (Current Assets)",
+      "subcategories": ["Rimanenze", "Crediti", "Attivita finanziarie", "Disponibilita liquide"],
+      "categories": [
+        {"code": "C-II-01", "name": "Crediti verso clienti", "keywords": ["crediti v/clienti", "fattura a cliente", "cliente saldo"]},
+        {"code": "C-II-05", "name": "IVA a credito (verso Erario)", "keywords": ["iva a credito", "erario c/iva", "iva 22%", "iva 10%", "iva 4%"]},
+        {"code": "C-IV-01", "name": "Banca c/c e cassa", "keywords": ["banca c/c", "cassa contanti", "pos", "carta di credito", "bonifico"]}
+      ]
+    },
+    {
+      "code": "D",
+      "name": "Ratei e risconti attivi"
+    }
   ],
 
   "stato_patrimoniale_passivo": [
-    {"code": "A", "name": "Patrimonio netto (Equity)"},
-    {"code": "B", "name": "Fondi per rischi e oneri"},
-    {"code": "C", "name": "Trattamento di fine rapporto (TFR)"},
-    {"code": "D", "name": "Debiti (Liabilities)"},
-    {"code": "E", "name": "Ratei e risconti passivi"}
+    {
+      "code": "A",
+      "name": "Patrimonio netto (Equity)"
+    },
+    {
+      "code": "B",
+      "name": "Fondi per rischi e oneri"
+    },
+    {
+      "code": "C",
+      "name": "Trattamento di fine rapporto (TFR)"
+    },
+    {
+      "code": "D",
+      "name": "Debiti (Liabilities)",
+      "categories": [
+        {"code": "D-07", "name": "Debiti verso fornitori", "keywords": ["fornitori", "totale fattura", "totale documento", "debito fornitore"]},
+        {"code": "D-12", "name": "IVA a debito (verso Erario)", "keywords": ["iva a debito", "erario c/iva vendita"]}
+      ]
+    },
+    {
+      "code": "E",
+      "name": "Ratei e risconti passivi"
+    }
   ],
 
   "conto_economico": [
     {
-      "code": "A", "name": "Valore della produzione (Revenue)",
+      "code": "A",
+      "name": "Valore della produzione (Revenue)",
       "categories": [
-        {"code": "A-01", "name": "Ricavi delle vendite e delle prestazioni", "keywords": ["vendita", "fattura vendita", "prestazione di servizi", "ricavo", "corrispettivo"]},
-        {"code": "A-05", "name": "Altri ricavi e proventi", "keywords": ["rimborso", "contributo", "altro ricavo", "sopravvenienza attiva"]}
+        {"code": "A-01", "name": "Ricavi delle vendite e delle prestazioni", "keywords": ["vendita", "fattura vendita", "prestazione di servizi", "ricavo", "corrispettivo", "onorario attivo", "consulenza attiva"]},
+        {"code": "A-05", "name": "Altri ricavi e proventi", "keywords": ["rimborso", "contributo", "altro ricavo", "sopravvenienza attiva", "bonus"]}
       ]
     },
     {
-      "code": "B", "name": "Costi della produzione (Operating Costs)",
+      "code": "B",
+      "name": "Costi della produzione (Operating Costs)",
       "categories": [
-        {"code": "B-06", "name": "Materie prime, sussidiarie, di consumo e merci", "keywords": ["materie prime", "materiale di consumo", "merce", "forniture", "materiali"]},
-        {"code": "B-07-UTIL", "name": "Utenze (energia, gas, acqua, telefonia)", "keywords": ["energia elettrica", "bolletta gas", "bolletta acqua", "utenza idrica", "telefonia", "internet", "adsl", "utenza", "bolletta"]},
-        {"code": "B-07-REPR", "name": "Spese di rappresentanza e vitto (business meals/hospitality)", "keywords": ["ristorante", "pizzeria", "pizza", "trattoria", "bar", "caffetteria", "cena di lavoro", "pranzo di lavoro", "catering", "tiramisu", "menu", "acqua naturale", "acqua minerale", "bevanda", "bibita", "vino", "caffe"]},
-        {"code": "B-07-CONS", "name": "Consulenze professionali", "keywords": ["consulenza", "commercialista", "avvocato", "spese legali", "notaio", "revisore"]},
-        {"code": "B-07-MANU", "name": "Manutenzioni e riparazioni", "keywords": ["manutenzione", "riparazione", "assistenza tecnica"]},
-        {"code": "B-07-TRAS", "name": "Trasporti e spedizioni", "keywords": ["trasporto", "spedizione", "corriere", "logistica", "consegna"]},
-        {"code": "B-07-ASSI", "name": "Assicurazioni", "keywords": ["assicurazione", "polizza"]},
-        {"code": "B-07-MARK", "name": "Pubblicita e marketing", "keywords": ["pubblicita", "marketing", "promozione", "advertising"]},
-        {"code": "B-07-VARI", "name": "Altri servizi", "keywords": ["servizio", "prestazione", "fornitura"]},
-        {"code": "B-08", "name": "Godimento di beni di terzi (affitti, leasing, noleggi)", "keywords": ["affitto", "locazione", "canone", "leasing", "noleggio"]},
-        {"code": "B-09", "name": "Costi per il personale", "keywords": ["stipendio", "salario", "retribuzione", "contributi inps", "tfr", "busta paga"]},
+        {"code": "B-06", "name": "Materie prime, sussidiarie, di consumo e merci", "keywords": ["materie prime", "materiale di consumo", "merce", "forniture", "materiali", "cancelleria", "carta a4", "toner", "imballaggi", "ricambi"]},
+        {"code": "B-07-UTIL", "name": "Utenze (energia, gas, acqua, telefonia, connettività)", "keywords": ["energia elettrica", "luce", "bolletta gas", "gas metano", "bolletta acqua", "utenza idrica", "telefonia", "tim", "vodafone", "windtre", "fastweb", "internet", "fibra", "adsl", "bolletta", "utenza"]},
+        {"code": "B-07-SAAS", "name": "Servizi cloud, hosting, SaaS e licenze digitali", "keywords": ["aws", "amazon web services", "google cloud", "azure", "github", "openai", "cloud", "hosting", "dominio", "canone software", "canone saas", "abbonamento digitale", "notion", "zoom", "slack", "hubspot"]},
+        {"code": "B-07-REPR", "name": "Spese di rappresentanza, vitto e alloggio", "keywords": ["ristorante", "pizzeria", "pizza", "trattoria", "bar", "caffetteria", "caffe", "cena di lavoro", "pranzo di lavoro", "catering", "tiramisu", "menu", "acqua minerale", "bevanda", "vino", "hotel", "albergo", "soggiorno", "ospitalita"]},
+        {"code": "B-07-CONS", "name": "Consulenze professionali, legali, fiscali e tecniche", "keywords": ["consulenza", "commercialista", "avvocato", "spese legali", "notaio", "revisore", "onorario", "parere legale", "consulenza tecnica", "audit", "prestazione professionale"]},
+        {"code": "B-07-MANU", "name": "Manutenzioni e riparazioni ordinarie", "keywords": ["manutenzione", "riparazione", "assistenza tecnica", "tagliando", "revisione impianto", "pulizia", "sanificazione", "interventi tecnici"]},
+        {"code": "B-07-TRAS", "name": "Trasporti, viaggi, trasferte e logistica", "keywords": ["trasporto", "spedizione", "corriere", "dhl", "fedex", "ups", "logistica", "consegna", "treno", "trenitalia", "italo", "aereo", "ryanair", "easyjet", "taxi", "uber", "pedaggio", "telepass", "autostrada", "parcheggio", "carburante", "benzina", "gasolio"]},
+        {"code": "B-07-ASSI", "name": "Assicurazioni e polizze", "keywords": ["assicurazione", "polizza", "premio assicurativo", "generali", "allianz", "unipol"]},
+        {"code": "B-07-MARK", "name": "Pubblicità, marketing e comunicazione", "keywords": ["pubblicita", "marketing", "promozione", "advertising", "google ads", "meta ads", "facebook ads", "linkedin ads", "fiera", "stand", "volantini", "brochure", "sponsorizzazione"]},
+        {"code": "B-07-VARI", "name": "Altri servizi e spese generali", "keywords": ["servizio", "prestazione", "fornitura", "servizi vari", "spese postali", "vigilanza"]},
+        {"code": "B-08", "name": "Godimento di beni di terzi (affitti, leasing, noleggi)", "keywords": ["affitto", "locazione", "canone locazione", "canone", "leasing", "noleggio", "noleggio auto", "coworking", "sede operativa"]},
+        {"code": "B-09", "name": "Costi per il personale", "keywords": ["stipendio", "salario", "retribuzione", "contributi inps", "inail", "tfr", "busta paga", "cedolino"]},
         {"code": "B-10", "name": "Ammortamenti e svalutazioni", "keywords": ["ammortamento", "svalutazione"]},
-        {"code": "B-14", "name": "Oneri diversi di gestione", "keywords": ["bollo", "imposta di bollo", "multa", "sanzione", "quota associativa", "abbonamento", "cancelleria"]}
+        {"code": "B-14", "name": "Oneri diversi di gestione", "keywords": ["bollo", "imposta di bollo", "multa", "sanzione", "quota associativa", "abbonamento riviste"]}
       ]
     },
     {
-      "code": "C", "name": "Proventi e oneri finanziari (Financial Income/Expenses)",
+      "code": "C",
+      "name": "Proventi e oneri finanziari (Financial Income/Expenses)",
       "categories": [
-        {"code": "C-17", "name": "Interessi e oneri finanziari", "keywords": ["interesse", "commissione bancaria", "onere finanziario", "spese bancarie"]}
+        {"code": "C-17", "name": "Interessi e oneri finanziari", "keywords": ["interesse", "commissione bancaria", "onere finanziario", "spese bancarie", "canone conto", "pos commissioni"]}
       ]
     },
-    {"code": "D", "name": "Rettifiche di valore di attivita finanziarie"},
-    {"code": "E", "name": "Imposte sul reddito (Taxes)",
+    {
+      "code": "D",
+      "name": "Rettifiche di valore di attivita finanziarie"
+    },
+    {
+      "code": "E",
+      "name": "Imposte sul reddito (Taxes)",
       "categories": [
-        {"code": "E-22", "name": "Imposte dirette e indirette", "keywords": ["ires", "irap", "imposta", "tassa"]}
+        {"code": "E-22", "name": "Imposte dirette e indirette", "keywords": ["ires", "irap", "imposta", "tassa", "f24"]}
       ]
     }
   ],
 
   "vat_rates": {
     "valid_rates_percent": [0, 4, 5, 10, 22],
-    "notes": "Standard Italian VAT (IVA) rates. 0% typically means exempt/non-taxable (esente/non imponibile) rather than a taxable 0-rated line -- worth a closer look, not necessarily an error."
+    "notes": "Standard Italian VAT (IVA) rates."
   }
 }
