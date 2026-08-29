@@ -7,6 +7,8 @@ orchestration, API, local SLM).
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
 
 # ----------------------------------------------------------------------
 # Paths
@@ -66,6 +68,19 @@ CONFIDENCE_REVIEW_THRESHOLD = float(os.getenv("CONFIDENCE_REVIEW_THRESHOLD", "0.
 # ----------------------------------------------------------------------
 # Demo 2 -- reminder / document collection agent
 # ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Demo 2 -- SMTP email delivery
+# ----------------------------------------------------------------------
+
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USERNAME)
+SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in {
+    "1", "true", "yes", "on"
+}
 
 REMINDER_FOLLOWUP_INTERVAL_DAYS = int(os.getenv("REMINDER_FOLLOWUP_INTERVAL_DAYS", "3"))
 REMINDER_MAX_FOLLOWUPS = int(os.getenv("REMINDER_MAX_FOLLOWUPS", "3"))
