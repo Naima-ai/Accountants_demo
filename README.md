@@ -10,7 +10,7 @@ data ever leaves the firm.
 - **Backend**: FastAPI, one consolidated API at `src/api/api.py` (mounted by `src/main.py`)
 - **Local SLM**: in-process `llama-cpp-python` (`src/llm/slm_client.py`) — no external daemon
 - **Database**: SQLite by default (`src/database/database.py`), swappable via `DATABASE_URL`
-- **Frontend**: Vite + React + TypeScript SPA in `frontend/`
+- **Frontend**: Streamlit in `src/ui` (Fully Functional) and Vite + React + TypeScript SPA in `frontend/`(Partially Functional)
 
 ## Backend setup
 
@@ -47,9 +47,25 @@ python src/data/generate_synthetic_samples.py   # synthetic Italian invoices
 python src/data/download_real_samples.py        # real SROIE/CORD receipt images (network)
 python src/database/seed_demo_data.py           # runs everything through the pipeline into the DB
 ```
+## Streamlit UI
+The **fully functional demo UI is now implemented in `src/ui` using Streamlit.**
+
+Start the Streamlit application from the project root:
+
+```bash
+streamlit run src/ui/ui.py
+```
+
+The UI will open at:
+```bash
+http://localhost:8501
+```
+
+The Streamlit UI provides the complete user-facing workflow for the demos, including the available dashboard, document processing, results, and advisory functionality.
+[View UI Functionality Report](UI_Functionality_Report.md)
 
 ## Frontend setup
-
+The `frontend/` directory contains the earlier Vite + React UI.
 ```bash
 cd frontend
 npm install
@@ -65,6 +81,7 @@ process/port:
 cd frontend && npm run build
 uvicorn src.main:app   # now also serves frontend/dist/ at http://localhost:8000
 ```
+> Note: The React frontend is not the primary demo UI anymore. For the current fully functional demonstration, use the Streamlit UI under src/ui.
 
 ## Layout
 
@@ -75,6 +92,7 @@ src/
   classifier/, extraction/, validation/, agents/   Demo 1 pipeline stages
   llm/            slm_client.py — in-process local model, shared by all demos
   memory/, database/  shared persistence layer
+  ui/ Streamlit UI — fully functional demo interface
   config.py       every tunable setting (SLM, thresholds, paths)
 frontend/         Vite + React UI (dashboard, and one page per demo)
 data_set/         synthetic + public sample documents used by the demos

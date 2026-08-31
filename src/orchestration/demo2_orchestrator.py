@@ -12,6 +12,7 @@ escalation, and persistence through MemoryStore.
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("demo2_orchestrator")
@@ -27,10 +28,18 @@ if _REPO_ROOT not in sys.path:
 
 from src.config import (
     REMINDER_DEFAULT_CHANNEL,
+    REMINDER_FOLLOWUP_INTERVAL_DAYS,
     REMINDER_MANUAL_MINUTES_PER_DOC,
     REMINDER_MAX_FOLLOWUPS,
 )
 from src.memory.memory import MemoryStore
+
+
+def _days_since(iso_timestamp: str) -> float:
+    sent_at = datetime.fromisoformat(iso_timestamp)
+    if sent_at.tzinfo is None:
+        sent_at = sent_at.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - sent_at).total_seconds() / 86400
 
 
 class FallbackReminderAgent:
@@ -145,6 +154,7 @@ class ReminderOrchestrator:
         self,
         client_id: str,
         period: str,
+        override_email: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Process all missing documents for one client."""
 
@@ -153,6 +163,9 @@ class ReminderOrchestrator:
         if client is None:
             raise ValueError(f"Unknown client_id: {client_id}")
 
+        if override_email:
+            client = {**client, "email": override_email}
+
         missing = self.memory.get_missing_documents(
             client_id,
             period,
@@ -160,6 +173,13 @@ class ReminderOrchestrator:
 
         reminders_sent: List[Dict[str, Any]] = []
         escalated: List[Dict[str, Any]] = []
+        skipped_too_soon = 0
+
+        # Pull the currently-open demo_2 review-queue items once per run
+        already_open_ids = {
+            item["ref_id"] for item in self.memory.list_review_queue("demo_2")
+            if item["ref_type"] == "expected_document"
+        }
 
         for missing_doc in missing:
             history = [
@@ -168,38 +188,32 @@ class ReminderOrchestrator:
                 if reminder["expected_document_id"] == missing_doc["id"]
             ]
 
+            # Cooldown: don't draft/send another reminder for this same missing document until REMINDER_FOLLOWUP_INTERVAL_DAYS has passed since the last one 
+            if history and _days_since(history[-1]["sent_at"]) < REMINDER_FOLLOWUP_INTERVAL_DAYS:
+                days_left = round(REMINDER_FOLLOWUP_INTERVAL_DAYS - _days_since(history[-1]["sent_at"]), 1)
+                logger.info(
+                    f"[{client_id}] {missing_doc['doc_type']} skipped -- last reminder was sent "
+                    f"{_days_since(history[-1]['sent_at']):.1f} day(s) ago, cooldown is "
+                    f"{REMINDER_FOLLOWUP_INTERVAL_DAYS} day(s) ({days_left} day(s) remaining)."
+                )
+                skipped_too_soon += 1
+                continue
+
             follow_up_number = len(history) + 1
 
             # Maximum follow-ups reached: stop sending and escalate.
             if follow_up_number > REMINDER_MAX_FOLLOWUPS:
-                reason = (
-                    f"No response after {REMINDER_MAX_FOLLOWUPS} "
-                    f"reminders for {missing_doc['doc_type']} "
-                    f"({period})."
-                )
-
-                logger.info(
-                    "[%s] %s exceeded maximum follow-ups (%s). "
-                    "Escalating instead of sending again.",
-                    client_id,
-                    missing_doc["doc_type"],
-                    REMINDER_MAX_FOLLOWUPS,
-                )
-
-                self.memory.flag_for_review(
-                    "demo_2",
-                    "expected_document",
-                    missing_doc["id"],
-                    reason,
-                )
-
-                escalated.append(
-                    {
-                        "doc_type": missing_doc["doc_type"],
-                        "follow_up_number": follow_up_number,
-                        "reason": reason,
-                    }
-                )
+                escalated.append(missing_doc)
+                if str(missing_doc["id"]) not in already_open_ids:
+                    logger.info(
+                        f"[{client_id}] {missing_doc['doc_type']} exceeded max follow-ups "
+                        f"({REMINDER_MAX_FOLLOWUPS}) -- escalating instead of sending again."
+                    )
+                    self.memory.flag_for_review(
+                        "demo_2", "expected_document", missing_doc["id"],
+                        f"No response after {REMINDER_MAX_FOLLOWUPS} reminders for "
+                        f"{missing_doc['doc_type']} ({period}) -- client: {client['name']} ({client_id}).",
+                    )
                 continue
 
             # Agent drafts the message.
@@ -271,7 +285,10 @@ class ReminderOrchestrator:
             "missing_count": len(missing),
             "reminders_sent": len(reminders_sent),
             "reminders": reminders_sent,
+            "escalated_count": len(escalated),
             "escalated": escalated,
+            "skipped_too_soon": skipped_too_soon,
+            "recipient_email": client.get("email"),
         }
 
     def run_for_roster(
@@ -286,7 +303,7 @@ class ReminderOrchestrator:
 
         per_client: List[Dict[str, Any]] = []
         total_reminders = 0
-
+        total_escalated = 0
         for client_id in client_ids:
             try:
                 result = self.run_for_client(
@@ -299,19 +316,15 @@ class ReminderOrchestrator:
 
             per_client.append(result)
             total_reminders += result["reminders_sent"]
+            total_escalated += result.get("escalated_count", 0) 
 
-        hours_saved = round(
-            (
-                total_reminders
-                * REMINDER_MANUAL_MINUTES_PER_DOC
-            ) / 60,
-            1,
-        )
+        hours_saved = round((total_reminders * REMINDER_MANUAL_MINUTES_PER_DOC) / 60, 1)
 
         return {
             "period": period,
             "clients_processed": len(per_client),
             "total_reminders_sent": total_reminders,
+            "total_escalated": total_escalated,
             "estimated_hours_saved": hours_saved,
             "clients": per_client,
         }
@@ -327,6 +340,7 @@ class ReminderOrchestrator:
 
 if __name__ == "__main__":
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    os.environ["REMINDER_FOLLOWUP_INTERVAL_DAYS"] = "0"  # rapid-fire calls below need the cooldown off
 
     import importlib
     import src.config as _config
@@ -422,27 +436,24 @@ if __name__ == "__main__":
     )
 
     print(f"Clients processed: {summary['clients_processed']}")
-    print(
-        f"Total reminders sent: "
-        f"{summary['total_reminders_sent']}"
-    )
-    print(
-        f"Estimated hours saved: "
-        f"{summary['estimated_hours_saved']}"
-    )
+    print(f"Total reminders sent: {summary['total_reminders_sent']}")
+    print(f"Total escalated: {summary['total_escalated']}")
+    print(f"Estimated hours saved: {summary['estimated_hours_saved']}")
+    for c in summary["clients"]:
+        print(f"  - {c['client_name']}: missing={c['missing_count']}, reminders_sent={c['reminders_sent']}, escalated={c['escalated_count']}")
 
-    for client in summary["clients"]:
-        print(
-            f"  - {client['client_name']}: "
-            f"missing={client['missing_count']}, "
-            f"reminders_sent={client['reminders_sent']}, "
-            f"escalated={len(client['escalated'])}"
-        )
+    assert summary["clients"][0]["reminders_sent"] == 0  # client 1 fully up to date
+    assert summary["clients"][1]["reminders_sent"] == 2  # client 2 missing 2
 
-    assert summary["clients_processed"] == 3
-    assert summary["clients"][0]["reminders_sent"] == 0
-    assert summary["clients"][1]["reminders_sent"] == 2
-    assert summary["clients"][2]["reminders_sent"] == 3
+    # Re-run for client 3 
+    for _ in range(REMINDER_MAX_FOLLOWUPS + 2):
+        orch.run_for_client("selftest-c-003", period)
+    queue_rows_for_client_3 = [
+        item for item in mem.list_review_queue("demo_2")
+        if "Selftest Verdi Srl" in item["reason"]
+    ]
+    print(f"\nOpen demo_2 review-queue rows for client 3 after repeated re-runs: {len(queue_rows_for_client_3)}")
+    assert len(queue_rows_for_client_3) == 3  # one per doc_type, not one per re-run
 
     print("\nDashboard:", mem.dashboard_status(period))
     print("\ndemo2_orchestrator.py self-test passed.")

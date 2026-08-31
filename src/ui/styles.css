@@ -1,0 +1,581 @@
+/* DESIGN TOKENS */
+
+   :root {
+    --ink: #0A1930;
+    --panel: #0F2545;
+    --panel-light: #15315E;
+    --line: #254173;
+
+    --signal: #3FA9F5;
+    --signal-dim: #1B4A78;
+
+    --text: #E7EEF9;
+    --subtext: #8FA6C9;
+
+    --ok: #33C481;
+    --warn: #E8A93B;
+    --err: #E5566B;
+}
+
+
+/* FONTS */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+html,
+body,
+[class*="css"] {
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* APP */
+
+.stApp {
+    background: var(--ink);
+    color: var(--text);
+}
+
+/* Hide Deploy button only */
+[data-testid="stAppDeployButton"] {
+    display: none !important;
+}
+
+/* SIDEBAR */
+
+section[data-testid="stSidebar"] {
+    background: #081326;
+    border-right: 1px solid var(--line);
+}
+
+section[data-testid="stSidebar"] * {
+    color: var(--text);
+}
+
+/* TYPOGRAPHY */
+
+h1,
+h2,
+h3,
+h4 {
+    color: var(--text);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+p,
+span,
+label,
+div {
+    color: var(--text);
+}
+
+.subtext {
+    color: var(--subtext);
+    font-size: 0.85rem;
+}
+
+/* HEADER / METRICS BANNER */
+
+.console-banner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.4rem;
+    background: linear-gradient(
+        180deg,
+        var(--panel) 0%,
+        var(--ink) 100%
+    );
+}
+
+.console-banner .metric {
+    flex: 1;
+    min-width: 160px;
+    padding: 0.85rem 1.1rem;
+    border-right: 1px solid var(--line);
+}
+
+.console-banner .metric:last-child {
+    border-right: none;
+}
+
+.console-banner .metric .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--subtext);
+}
+
+.console-banner .metric .value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-top: 0.15rem;
+    color: var(--text);
+}
+
+.console-banner .metric.live .value {
+    color: var(--signal);
+}
+
+.console-banner .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--signal);
+    margin-right: 6px;
+    box-shadow: 0 0 8px var(--signal);
+}
+
+/* SIDEBAR NAVIGATION */
+
+/* Radio container */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] {
+    width: 100%;
+}
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+    width: 100%;
+}
+
+/* Each option */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-height: 46px !important;
+    margin: 2px 0 !important;
+    padding: 0.55rem 0.75rem !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+}
+
+
+/* Hide radio indicator */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child,
+section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child > div,
+section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child > div > div {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+
+    height: 0 !important;
+    min-height: 0 !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    border: 0 !important;
+
+    opacity: 0 !important;
+    overflow: hidden !important;
+}
+
+
+/* Navigation text */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label p {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    color: var(--text) !important;
+
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+}
+
+
+/* Hover */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background: var(--panel) !important;
+}
+
+
+/* Selected navigation item */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+    background: rgba(63, 169, 245, 0.12) !important;
+    border-left: 3px solid var(--signal) !important;
+    padding-left: calc(0.75rem - 3px) !important;
+}
+
+
+/* Selected text */
+
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+    color: var(--signal) !important;
+    font-weight: 600 !important;
+}
+
+/* Sidebar - Client list */
+   .client-list {
+    max-height: 180px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    padding: 0.5rem 1rem 0.5rem 0rem;
+    margin: 0 0 12px 0;
+
+    box-sizing: border-box;
+}
+
+/* Individual client */
+.client-item {
+    padding: 6px 8px;
+    margin-bottom: 4px;
+
+    border-radius: 6px;
+}
+
+/* Client name */
+.client-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+/* Client ID + tone */
+.client-meta {
+    font-size: 0.68rem;
+    line-height: 1.25;
+    color: #8FA6C9;
+}
+
+/* Hover */
+.client-item:hover {
+    background: #0F2545;
+}
+
+/* Scrollbar */
+.client-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.client-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.client-list::-webkit-scrollbar-thumb {
+    background: #254173;
+    border-radius: 10px;
+}
+
+.client-list::-webkit-scrollbar-thumb:hover {
+    background: #3FA9F5;
+}
+
+
+
+    /* Target the text inside the header bar */
+    div[data-testid="stExpander"] summary p {
+        /* font-size: 1.2rem !important; */
+        color: white !important;
+    }
+
+    /* Target the inner content area when opened */
+    div[data-testid="stExpanderDetails"] {
+        background-color: var(--panel) !important;
+        padding: 15px !important;
+        /* color: #333333 !important; */
+    }
+
+    div[data-testid="stExpander"] summary:hover{
+        box-shadow:0 4px 8px 0 rgba(0,0,0,0.6)
+    }
+
+    /* Style the overall form container */
+     div.stForm {
+         background-color: var(--ink) !important;
+         padding: 20px;
+         border-radius: 10px;
+         border: 1px solid var(--line);
+
+    }
+    
+    /* Style text input fields inside the form */
+    div.stForm div.stTextInput input {
+        color: #333333;
+        border-radius: 5px;
+    }
+    
+    /* Style the form submit button */
+    div.stForm div.stFormSubmitButton button {
+        background: transparent !important;
+        color: var(--signal) !important;
+        border: 1px solid var(--signal-dim) !important;
+        width: 100% !important;
+    }
+    div.stForm div.stFormSubmitButton button:hover{
+        background: rgba(63, 169, 245, 0.10) !important;
+        color: #3FA9F5 !important;
+        border-color: #3FA9F5 !important;
+        transition: background-color 0.5s ease-in-out 0.1s;
+        box-shadow:0 4px 8px 0 rgba(0,0,0,0.6)
+    }
+
+    .stTextInput [data-testid="InputInstructions"] {
+        color: #3FA9F5 !important;
+        font-size: 0.6rem !important;
+        opacity: 0.5 !important;
+    }
+/* Original document prev */
+
+   .original-preview {
+    height: 450px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    border: 1px solid #254173;
+    border-radius: 8px;
+    background: #0F2545;
+
+    box-sizing: border-box;
+    padding: 8px;
+}
+
+/* Scrollbar */
+.original-preview::-webkit-scrollbar {
+    width: 6px;
+}
+
+.original-preview::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.original-preview::-webkit-scrollbar-thumb {
+    background: #254173;
+    border-radius: 10px;
+}
+
+.original-preview::-webkit-scrollbar-thumb:hover {
+    background: #3FA9F5;
+}
+.original-preview {
+    height: 450px;
+    overflow-y: auto;
+    overflow-x: auto;
+
+    background: #0F2545;
+    border: 1px solid #254173;
+    border-radius: 8px;
+
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.original-preview pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    color: #E7EEF9;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
+.original-preview::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.original-preview::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.original-preview::-webkit-scrollbar-thumb {
+    background: #254173;
+    border-radius: 10px;
+}
+
+.original-preview::-webkit-scrollbar-thumb:hover {
+    background: #3FA9F5;
+}
+
+/* XML / text code preview */
+div[data-testid="stCode"] pre {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+}
+.custom-text {
+    font-size: 0.8rem;
+}
+
+/* CARDS */
+
+.panel {
+    background: var(--panel);
+    border-radius: 1rem 1rem 0rem 0rem;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.panel-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--subtext);
+    
+}
+
+/* BADGES / PILLS */
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    padding: 0.22rem 0.7rem;
+
+    border-radius: 999px;
+
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+
+    border: 1px solid transparent;
+}
+
+.pill-ok {
+    background: rgba(51, 196, 129, 0.12);
+    color: var(--ok);
+    border-color: rgba(51, 196, 129, 0.4);
+}
+
+.pill-warn {
+    background: rgba(232, 169, 59, 0.12);
+    color: var(--warn);
+    border-color: rgba(232, 169, 59, 0.4);
+}
+
+.pill-err {
+    background: rgba(229, 86, 107, 0.12);
+    color: var(--err);
+    border-color: rgba(229, 86, 107, 0.4);
+}
+
+.pill-neutral {
+    background: var(--signal-dim);
+    color: var(--signal);
+    border-color: rgba(63, 169, 245, 0.4);
+}
+
+.pill-doctype {
+    background: rgba(63, 169, 245, 0.14);
+    color: var(--signal);
+    border-color: rgba(63, 169, 245, 0.5);
+    text-transform: uppercase;
+}
+
+/* BUTTONS */
+
+.stButton > button,
+.stDownloadButton > button {
+    background: var(--signal);
+    color: var(--ink);
+
+    border: none;
+    border-radius: 7px;
+
+    font-weight: 700;
+    padding: 0.5rem 1.1rem;
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    background: #62BEF7;
+    color: var(--ink);
+}
+
+button[kind="secondary"] {
+    background: transparent !important;
+    color: var(--signal) !important;
+    border: 1px solid var(--signal-dim) !important;
+}
+button[kind="secondary"]:hover {
+    background: rgba(63, 169, 245, 0.10) !important;
+    color: #3FA9F5 !important;
+    border-color: #3FA9F5 !important;
+    transition: background-color 0.5s ease-in-out 0.1s;
+    box-shadow:0 8px 16px 0 rgba(0,0,0,0.6)
+}
+
+/* INPUTS */
+
+.stTextInput input,
+.stNumberInput input,
+.stDateInput input,
+.stTextArea textarea,
+.stSelectbox div[data-baseweb="select"] > div {
+    background: var(--panel-light) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 6px !important;
+}
+/* Raw extracted text */
+div[data-testid="stTextArea"] textarea {
+    height: 500px !important;
+    min-height: 500px !important;
+}
+
+/* DATAFRAME / TABLE */
+
+div[data-testid="stDataFrame"] {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* TABS */
+
+button[data-baseweb="tab"] {
+    color: var(--subtext);
+    font-weight: 600;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: var(--signal);
+}
+
+div[data-baseweb="tab-highlight"] {
+    background-color: var(--signal);
+}
+
+/* LETTER BOX — DEMO 3 */
+
+.letter-box {
+    background: var(--panel-light);
+
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--signal);
+
+    border-radius: 6px;
+
+    padding: 1.2rem 1.4rem;
+
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.86rem;
+    line-height: 1.6;
+
+    white-space: pre-wrap;
+    max-height: 30rem;
+    overflow: scroll;
+
+    color: var(--text);
+}
+
+/* DIVIDERS */
+
+hr {
+    border-color: var(--line);
+}

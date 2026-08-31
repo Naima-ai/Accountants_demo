@@ -361,6 +361,39 @@ class MemoryStore:
                 for r in rows
             ]
 
+    def clear_reminder_history(self, client_id: str, period: Optional[str] = None) -> int:
+        """
+        Deletes logged reminders for a client
+        Also resolves any open demo_2 review-queue escalations tied to the same expected_documents
+        Returns the number of reminder rows deleted.
+        """
+        with session_scope() as s:
+            query = (
+                s.query(ReminderLog)
+                .join(ExpectedDocument, ReminderLog.expected_document_id == ExpectedDocument.id)
+                .filter(ExpectedDocument.client_id == client_id)
+            )
+            if period:
+                query = query.filter(ExpectedDocument.period == period)
+            rows = query.all()
+
+            expected_doc_ids = {str(r.expected_document_id) for r in rows}
+            count = len(rows)
+            for r in rows:
+                s.delete(r)
+
+            if expected_doc_ids:
+                for item in (
+                    s.query(ReviewQueueItem)
+                    .filter_by(ref_type="expected_document", status="open")
+                    .all()
+                ):
+                    if item.ref_id in expected_doc_ids:
+                        item.status = "resolved"
+                        item.resolved_at = _utcnow_str()
+
+        return count
+
     def dashboard_status(self, period: str) -> Dict[str, Any]:
         """
         Per-client rollup for the Demo 2 dashboard: how many documents
@@ -474,6 +507,44 @@ class MemoryStore:
                 for r in rows
             ]
 
+    def delete_report(self, report_id: int) -> bool:
+        """Deletes one stored advisory report -- the manual "delete this draft" action. 
+        Also resolves any open demo_3 review-queue item that was raised against it.
+        Returns True if a row was found and deleted."""
+        with session_scope() as s:
+            report = s.get(AnalysisReport, report_id)
+            if report is None:
+                return False
+            s.delete(report)
+            for item in (
+                s.query(ReviewQueueItem)
+                .filter_by(ref_type="analysis_report", ref_id=str(report_id), status="open")
+                .all()
+            ):
+                item.status = "resolved"
+                item.resolved_at = _utcnow_str()
+        return True
+
+    def delete_reports_for_period(self, client_id: str, period: str) -> int:
+        """Deletes every stored report for one client/period. 
+        Returns the number of rows deleted."""
+        with session_scope() as s:
+            rows = s.query(AnalysisReport).filter_by(client_id=client_id, period=period).all()
+            ids = {str(r.id) for r in rows}
+            count = len(rows)
+            for r in rows:
+                s.delete(r)
+            if ids:
+                for item in (
+                    s.query(ReviewQueueItem)
+                    .filter_by(ref_type="analysis_report", status="open")
+                    .all()
+                ):
+                    if item.ref_id in ids:
+                        item.status = "resolved"
+                        item.resolved_at = _utcnow_str()
+        return count
+
     # ------------------------------------------------------------------
     # Shared -- human review queue
     # ------------------------------------------------------------------
@@ -508,8 +579,8 @@ class MemoryStore:
 
 
 # ----------------------------------------------------------------------
-# Quick manual test: exercises the Demo 1 supplier-learning path and the
-# Demo 2 checklist/reminder/dashboard path end to end, in-memory.
+# Quick manual test: exercises the Demo 1 supplier-learning path, the
+# Demo 2 checklist/reminder/dashboard path, and clear_reminder_history.
 # Run: python memory.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
@@ -546,6 +617,14 @@ if __name__ == "__main__":
     expected_id = missing[0]["id"]
     memory.log_reminder("c-001", expected_id, channel="email", message="Please send your bank statement.", tone="formal")
     print("Dashboard:", memory.dashboard_status("2026-07"))
+
+    print("\n=== Demo 2: clear_reminder_history ===")
+    before = len(memory.get_reminder_history("c-001"))
+    deleted = memory.clear_reminder_history("c-001", "2026-07")
+    after = len(memory.get_reminder_history("c-001"))
+    print(f"Reminders before={before}, deleted={deleted}, after={after}")
+    assert deleted == 1
+    assert after == 0
 
     print("\n=== Shared review queue ===")
     memory.flag_for_review("demo_1", "document", "doc-002", "Low OCR confidence")

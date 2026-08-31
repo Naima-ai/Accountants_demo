@@ -177,9 +177,9 @@ Rules:
             )
             return True
 
-        except (OSError, smtplib.SMTPException) as exc:
+        except Exception as exc:
             logger.exception(
-                "SMTP reminder delivery failed for %s <%s>: %s",
+                "Reminder delivery failed for %s <%s>: %s",
                 client.get("name", "unknown"),
                 recipient,
                 exc,

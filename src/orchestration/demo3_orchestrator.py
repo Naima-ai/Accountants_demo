@@ -11,6 +11,11 @@ report_agent.py's FinancialAnalysisAgent, and persists the result --
 so a second call for the same client naturally has something to
 compare against, same growth pattern as Demo 1's supplier learning.
 
+Regenerating for the SAME client/period replaces the previously stored
+report instead of piling up a duplicate -- store_report() itself has
+no existence check, so without this every re-generate (or every click
+of "Generate advisory report" against the same data) added another row.
+
 Usage:
     from src.orchestration.demo3_orchestrator import ReportOrchestrator
 
@@ -64,6 +69,9 @@ class ReportOrchestrator:
         if store_statement:
             self.memory.store_financial_statement(client_id, period, statement, statement_type)
 
+        # Regenerating for this exact client/period replaces the old report rather than inserting a duplicate 
+        self.memory.delete_reports_for_period(client_id, period)
+
         report_id = self.memory.store_report(
             client_id=client_id, period=period,
             ratios=report.ratios.model_dump(), anomalies=[a.model_dump() for a in report.anomalies],
@@ -73,7 +81,7 @@ class ReportOrchestrator:
         if any(a.severity == "alert" for a in report.anomalies):
             self.memory.flag_for_review(
                 "demo_3", "analysis_report", report_id,
-                "Report contains at least one alert-severity anomaly.",
+                f"Report contains at least one alert-severity anomaly. Client: {client['name']} ({client_id}), period {period}.",
             )
 
         result = report.to_dict()
@@ -85,7 +93,8 @@ class ReportOrchestrator:
 # ----------------------------------------------------------------------
 # Quick manual test: generates a report for Q1 (no prior period), then
 # a report for Q2 (should automatically pick up Q1 from memory as the
-# prior period for comparison).
+# prior period for comparison). Also confirms regenerating Q1 replaces
+# the stored report instead of duplicating it.
 # Run: python demo3_orchestrator.py
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
@@ -117,15 +126,20 @@ if __name__ == "__main__":
     print("=== Q1 report (no prior period yet) ===")
     q1_report = orch.generate_report("c-001", "2026-Q1", q1_statement)
     print(f"compared_to_prior: {q1_report['compared_to_prior']}")
-    print(f"anomalies: {len(q1_report['anomalies'])}")
     assert q1_report["compared_to_prior"] is False
 
     print("\n=== Q2 report (Q1 should be picked up automatically) ===")
     q2_report = orch.generate_report("c-001", "2026-Q2", q2_statement)
     print(f"compared_to_prior: {q2_report['compared_to_prior']}")
-    print(f"anomalies: {len(q2_report['anomalies'])}")
     assert q2_report["compared_to_prior"] is True
     assert len(q2_report["anomalies"]) >= 2
+
+    print("\n=== Re-generating Q1 should REPLACE, not duplicate ===")
+    orch.generate_report("c-001", "2026-Q1", q1_statement)
+    orch.generate_report("c-001", "2026-Q1", q1_statement)
+    q1_reports = [r for r in mem.get_reports("c-001") if r["period"] == "2026-Q1"]
+    print(f"Stored reports for 2026-Q1 after 3 total generate calls: {len(q1_reports)}")
+    assert len(q1_reports) == 1
 
     print("\nStored reports for c-001:", len(mem.get_reports("c-001")))
     print("Review queue:", mem.list_review_queue("demo_3"))
